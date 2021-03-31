@@ -12,6 +12,7 @@ int main(void)
 	int Firmware = 0;
     	int x;
 	int Baud = 9600;
+	int value;
 //	char temp[16]; 	// needed for some tests
 //	long value=0; 	// needed for some tests
     	puts("Start.."); 
@@ -21,6 +22,10 @@ int main(void)
 	Firmware = open("class_5_0_4_31.hez", O_RDWR | O_NOCTTY);
     	if (Port < 0|| SMX < 0 || SMXE < 0 || Firmware <0)
     	{
+		printf("%d\n",Port);
+		printf("%d\n",SMX);
+		printf("%d\n",SMXE);
+		printf("%d\n",Firmware);
         	puts("error opening a file");
 		
 	}
@@ -32,19 +37,23 @@ int main(void)
 //      x = UploadSMX(Port,Baud, 1);
 //	x = UploadSMS(Port,Baud,1);
 //	x = DownloadFirmware(Port,Firmware, Baud,1);
-//	x = WriteCommand(Port, Baud, "Ra ", 1);
+//	x = WriteCommand(Port, Baud, "RPA ", 4);
+	x = WriteCommand(Port, Baud, "MT ", 1, 0x80);
+	x = WriteCommand(Port, Baud, "T=0 ", 1, 0x80);
+	x = WriteCommand(Port, Baud, "G ", 1, 0x80);
+	x = WriteCommand(Port, Baud, "RPA ", 0, 0x80);
 //	x = GetFirmwareVersion(Port, Baud, temp ,1);
 //	x = GetSerial(Port, Baud, temp,1);		
 //	x = GetProdDate(Port, Baud, temp, 1);
-//	x = GetValue(Port, Baud, "RPT ", value, 1);
+	x = GetValue(Port, Baud, "RPA ", value, 1, 0x81);
 //	x = EstLinkNew(Port, Baud);
-	x = DetectRS232(Port, Baud);
+//	x = DetectRS232(Port, Baud);
 //	x = AddressRS232(Port, Baud);
 //	x = DetectRS485(Port, Baud);
 	if ( x >= 0)
    	{
 		puts("Complete");
-		printf("%d\n",x);
+		printf("%s%d\n", "s: ", x);
    	}
    	else
    	{

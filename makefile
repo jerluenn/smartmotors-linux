@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Werror
+CFLAGS = -Wall
 SOURCES = $(shell echo src/*c)
 INCLUDES = $(shell echo include/*.h)
 LIBDIR = $(lib/)

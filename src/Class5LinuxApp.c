@@ -13,12 +13,12 @@ int DownloadSmxeFile(int Port, int SMXE, int Baud, char echo);
 int DownloadFirmware(int Port, int Firmware, int Baud, char ehco);
 int UploadSMS(int Port, int Baud,  char echo);
 int UploadSMX(int Port, int Baud, char echo);
-int WriteCommand(int Port, int Baud, char* Command, char echo);
+int WriteCommand(int Port, int Baud, char* Command,char echo, char* MotorNo)
 int GetFileName(int Port, char* Filename, char echo);
 int GetFirmwareVersion(int Port, int Baud, char* temp, char echo);
 int GetSerial(int Port, int Baud, char* temp, char echo);
 int GetProdDate(int Port, int Baud, char* temp, char echo);
-int GetValue(int Port, int Baud, char* Command, long value, char echo);
+int GetValue(int Port, int Baud, char* Command, long value, char echo, char* MotorNo);
 int testfunc(int Port);
 int testBaud(int Port, int Baud);
 int EstLinkNew(int Port, int Baud);
@@ -71,8 +71,8 @@ int testfunc(int Port)
 	{
 		struct termios options;
 		int Port = 0;
-		
-		Port =open("/dev/ttyS0", O_RDWR | O_NOCTTY | O_NDELAY);
+
+		Port =open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY);
 
 		if (Port == -1)
 		{
@@ -90,14 +90,14 @@ int testfunc(int Port)
 		cfmakeraw(&options);
 
 		options.c_cflag |= (CLOCAL | CREAD);    // Enable the reciever and set local mode
-		options.c_cflag &= ~CSTOPB;		
+		options.c_cflag &= ~CSTOPB;
 		options.c_cflag &= ~CRTSCTS;		// Disable hardware flow control
 
 		if(tcsetattr(Port,TCSANOW, &options) <0)
 		{
 			return -1;
 		}
-		
+
 		return (Port);
 
 	}
@@ -152,7 +152,7 @@ int testfunc(int Port)
 					return -1;
 				}
 				if(cfsetospeed(&options,B19200)==-1)
-				{	
+				{
 					return -1;
 				}
 				break;
@@ -161,7 +161,7 @@ int testfunc(int Port)
 				{
 					return -1;
 				}
-				
+
 			if(cfsetospeed(&options,B38400)==-1)
 			{
 				return -1;
@@ -224,7 +224,7 @@ int DownloadSmxFile(int Port, int SMX, int Baud, char echo)
 	long RemainingBytes =(long) lseek(SMX, 0, SEEK_END);
 	char buffer[RemainingBytes];
 	long i=0;
-	
+
         struct termios options;
 
 	if( SetBaudrate(Port, Baud) != 0)
@@ -233,9 +233,9 @@ int DownloadSmxFile(int Port, int SMX, int Baud, char echo)
 		return -99;
     	}
 
-	
+
 	if(tcgetattr(Port, &options) < 0)
-	{	
+	{
 		return -1;
 	}
 	if ((options.c_cc[VMIN] != 0) || (options.c_cc[VTIME] != 10))
@@ -247,17 +247,17 @@ int DownloadSmxFile(int Port, int SMX, int Baud, char echo)
 			return -1;
 		}
 	}
-	
+
 	while(read(Port, (unsigned char*)&buf, 1) >0)
 	{
 	}
-	
+
 	if (write(Port,"LOAD ",5)<= 0)
 	{
 
 		return -1;
 	}
-	
+
 	if(echo)
 	{
 		for (i =0; i<5; i++)
@@ -266,23 +266,23 @@ int DownloadSmxFile(int Port, int SMX, int Baud, char echo)
 		}
 	}
 	if(read(Port,(unsigned char *)&resp ,1)< 0)
-	{	
+	{
 		return -2;
 	}
 	if (resp!= 0x06)
-	{	
+	{
 		return -3;
 	}
-	lseek(SMX,0, SEEK_SET);	
+	lseek(SMX,0, SEEK_SET);
 	if(read(SMX,(unsigned char*)&buffer, RemainingBytes)<0)
 	{
 		return -1;
 	}
-	i = 0;		
+	i = 0;
 	while (RemainingBytes >0)
 	{
-	
-		long bytes_sent =  32;	
+
+		long bytes_sent =  32;
 		if(RemainingBytes < 32)
 		{
 			bytes_sent = RemainingBytes;
@@ -290,31 +290,31 @@ int DownloadSmxFile(int Port, int SMX, int Baud, char echo)
 		RemainingBytes -= bytes_sent;
 		if (write(Port,(unsigned char*)&buffer[i], bytes_sent) < 0)
 		{
-		
-		
+
+
 			return -5;
 		}
 		i += bytes_sent;
 		while(read(Port, (unsigned char*)&buf, 1)>0)
 		{
-		}	
+		}
 		if(bytes_sent == 32)
 		{
-			
+
 			if(read(Port,(unsigned char*)&resp, 1) <0)
-			{					
+			{
 				return -6;
 			}
-		
+
 			if(resp != 0x06)
 			{
 				return -7;
-			}	
+			}
 		}
-		
+
 
 	}
-     	
+
 	if (write(Port, "\xFF\xFF\x20",3)<=0)
 	{
 
@@ -334,7 +334,7 @@ int DownloadSmxeFile(int Port, int SMXE, int Baud, char echo)
 	long RemainingBytes =(long) lseek(SMXE, 0, SEEK_END);
 	char buffer[RemainingBytes];
 	long i=0;
-	
+
 	struct termios options;
 
 	if( SetBaudrate(Port, Baud) != 0)
@@ -342,11 +342,11 @@ int DownloadSmxeFile(int Port, int SMXE, int Baud, char echo)
 		puts("error setting baudrate");
 		return -99;
     	}
-	
-	
-	
+
+
+
 	if(tcgetattr(Port, &options) < 0)
-	{	
+	{
 		return -1;
 	}
 	if ((options.c_cc[VMIN] != 0) || (options.c_cc[VTIME] != 10))
@@ -357,7 +357,7 @@ int DownloadSmxeFile(int Port, int SMXE, int Baud, char echo)
 		{
 			return -1;
 		}
-	}	
+	}
 	while(read(Port,(unsigned char*)&buf, 1) >0)
 	{
 	}
@@ -373,25 +373,25 @@ int DownloadSmxeFile(int Port, int SMXE, int Baud, char echo)
 			read(Port,(unsigned char*)&buf,1);
 		}
 	}
-	
+
 	if(read(Port,(unsigned char *)&resp ,1)< 0)
-	{	
+	{
 		return -2;
 	}
 	if (resp!= 0x06)
 	{
 		return -3;
 	}
-	
+
 	lseek(SMXE, 0, SEEK_SET);
 	if(read(SMXE,(unsigned char*)&buffer, RemainingBytes) <0)
 	{
 		return -4;
 	}
-		
+
 	while (RemainingBytes >0)
-	{	
-		long bytes_sent =  32;	
+	{
+		long bytes_sent =  32;
 		if(RemainingBytes < 32)
 		{
 			bytes_sent = RemainingBytes;
@@ -404,12 +404,12 @@ int DownloadSmxeFile(int Port, int SMXE, int Baud, char echo)
 		i += bytes_sent;
 		while(read(Port, (unsigned char*)&buf,1) >0)
 		{
-		}	
+		}
 		if(bytes_sent == 32)
 		{
 			if(read(Port,(unsigned char*)&resp, 1) <0)
 			{
-		
+
 				return -6;
 			}
 			if(resp != 0x06)
@@ -429,21 +429,21 @@ int DownloadSmxeFile(int Port, int SMXE, int Baud, char echo)
 // // -----------------------------------------------------
 int DownloadFirmware(int Port, int Firmware, int Baud, char echo)
 {
-	
+
 	char buf;
 	long fileLen =(long) lseek(Firmware, 0, SEEK_END);
 	long i=0;
 	char Readbuf[389];
 	struct termios options;
 	lseek(Firmware, 0, SEEK_SET);
-	
+
 	if( SetBaudrate(Port, Baud) != 0)
     	{
 		puts("error setting baudrate");
 		return -99;
     	}
 	if(tcgetattr(Port, &options) < 0)
-	{	
+	{
 		return -1;
 	}
 	if ((options.c_cc[VMIN] != 0) || (options.c_cc[VTIME] != 10))
@@ -455,9 +455,9 @@ int DownloadFirmware(int Port, int Firmware, int Baud, char echo)
 		if(tcsetattr(Port, TCSAFLUSH, &options) <0)
 		{
 			return -1;
-		}		
+		}
 	}
-	
+
 	while(read(Port, (unsigned char*)&buf,1)>0)
 	{
 	}
@@ -491,7 +491,7 @@ int DownloadFirmware(int Port, int Firmware, int Baud, char echo)
 			return -55;
 		}
 	}
-	
+
 	sleep(.1);
 	if (write(Port,"ECHO_OFF ",9)<= 0)
 	{
@@ -501,9 +501,9 @@ int DownloadFirmware(int Port, int Firmware, int Baud, char echo)
 	if (write(Port,"CLASS5 ",7)<= 0)
 	{
 
-		return -1;	
+		return -1;
 	}
-//	char b=0x80;					
+//	char b=0x80;
 	if( SetBaudrate(Port, 38400) != 0)
     	{
 		puts("error setting baudrate");
@@ -511,7 +511,7 @@ int DownloadFirmware(int Port, int Firmware, int Baud, char echo)
     	}
 	for(i =0; i< 100;i++)
 	{
-	
+
 		if (write(Port,"START ",6)<= 0)
 		{
 
@@ -521,28 +521,28 @@ int DownloadFirmware(int Port, int Firmware, int Baud, char echo)
 	}
 	sleep(.2);
 	//encryption
-		
+
 	while(read(Port,(unsigned char*)&buf,1)>0)
 	{
-	}	
+	}
 	char a=0x0A;
 	if (write(Port, (unsigned char *)&a, 1) <=0)
 	{
 		return -2;
 	}
-			
+
 	if(read(Port,(unsigned char*)&buf, 1) == 0)
 	{
 		return -33;
-	}	
-	if(buf != 0x01)
-	{	
-	 	return -45; 
 	}
-	
-	
+	if(buf != 0x01)
+	{
+	 	return -45;
+	}
 
-	
+
+
+
 	read(Firmware, &Readbuf, 7);
 	fileLen -= 7;
 	while(read(Port,(unsigned char*)&buf,1)>0)
@@ -553,7 +553,7 @@ int DownloadFirmware(int Port, int Firmware, int Baud, char echo)
 		return -5;
 	}
 	sleep(.01);
-	
+
 	if (read(Port, &buf, 1) ==0)
 	{
 		return -6;
@@ -562,8 +562,8 @@ int DownloadFirmware(int Port, int Firmware, int Baud, char echo)
 	{
 		return -7;
 	}
-	
-	
+
+
 
 	while (fileLen >0)
 	{
@@ -574,14 +574,14 @@ int DownloadFirmware(int Port, int Firmware, int Baud, char echo)
 			length = fileLen;
 		}
 		fileLen -=length;
-		read(Firmware,(unsigned char*)&Readbuf, length);	
+		read(Firmware,(unsigned char*)&Readbuf, length);
 		if(write(Port,(unsigned char*)&Readbuf[0], length)==0)
 		{
 			return -8;
 		}
 		if(length==101 )
 		{
-			
+
 			if(read(Port, &buf,1)==0)
 			{
 				return -9;
@@ -610,10 +610,10 @@ int UploadSMS(int Port, int  Baud, char echo)
 	char a = 0x06;
 	char end = 0xFF;
 	char Filename[24];
-	
-	int SMS = 0; 
+
+	int SMS = 0;
 	struct termios options;
-	
+
 	if( SetBaudrate(Port,Baud) != 0)
     	{
 		puts("error setting baudrate");
@@ -622,7 +622,7 @@ int UploadSMS(int Port, int  Baud, char echo)
 
 
 	if(tcgetattr(Port, &options) < 0)
-	{	
+	{
 		return -1;
 	}
 	if ((options.c_cc[VMIN] != 0) || (options.c_cc[VTIME] != 10))
@@ -635,7 +635,7 @@ int UploadSMS(int Port, int  Baud, char echo)
 			return -1;
 		}
 	}
-	
+
 	while(read(Port, (unsigned char*)&buf, 1)>0)
 	{
 	}
@@ -650,16 +650,16 @@ int UploadSMS(int Port, int  Baud, char echo)
 	 		read(Port,(unsigned char*)&buf, 1);
 		}
 	}
-	
+
 	if(GetFileName(Port,(char*)&Filename, echo)!=0)
 	{
 		return -99;
 	}
-		
+
 	j =0;
 	for (i =0; i <sizeof(Filename); i++)
 	{
-	
+
 		if ( (int) Filename[i] <= 32)
 		{
 			break;
@@ -669,20 +669,20 @@ int UploadSMS(int Port, int  Baud, char echo)
 	Filename[i+1] = 's';
 	Filename[i+2] = 'm';
 	Filename[i+3] = 's';
-	
+
 	char Filename2[28];
-	
+
 	for(j=0;j<(i+4);j++)
 	{
 		Filename2[j]=Filename[j];
 	}
-	Filename2[i+4] = 0;	
-		
+	Filename2[i+4] = 0;
+
 	SMS = open(Filename2, O_RDWR |O_APPEND | O_CREAT, 00007);
-	
+
 	while(read(Port,(unsigned char*)&buf,1)>0)
 	{
-	}	
+	}
 	if(write(Port, "UPLOAD ",7)==0)
 	{
 		return -1;
@@ -709,7 +709,7 @@ int UploadSMS(int Port, int  Baud, char echo)
 			ClosePort(SMS);
 			return 0;
 		}
-		
+
 		if(write(SMS, (unsigned char*)&data,1) ==0)
 		{
 			return -4;
@@ -733,9 +733,9 @@ int UploadSMS(int Port, int  Baud, char echo)
 				}
 			}
 			count = 0;
-		}	
+		}
 	}
-	
+
 	ClosePort(SMS);
 	return 0;
 }
@@ -753,10 +753,10 @@ int UploadSMX(int Port, int  Baud, char echo)
 	char a = 0x06;
 	char end = 0xFF;
 	char Filename[24];
-	
-	int SMX = 0; 
+
+	int SMX = 0;
 	struct termios options;
-	
+
 	if( SetBaudrate(Port,Baud) != 0)
     	{
 		puts("error setting baudrate");
@@ -765,7 +765,7 @@ int UploadSMX(int Port, int  Baud, char echo)
 
 
 	if(tcgetattr(Port, &options) < 0)
-	{	
+	{
 		return -1;
 	}
 	if ((options.c_cc[VMIN] != 0) || (options.c_cc[VTIME] != 10))
@@ -778,7 +778,7 @@ int UploadSMX(int Port, int  Baud, char echo)
 			return -1;
 		}
 	}
-	
+
 	while(read(Port, (unsigned char*)&buf, 1)>0)
 	{
 	}
@@ -793,7 +793,7 @@ int UploadSMX(int Port, int  Baud, char echo)
 	 		read(Port,(unsigned char*)&buf, 1);
 		}
 	}
-	
+
 	if(GetFileName(Port,(char*)&Filename, echo)!=0)
 	{
 		return -99;
@@ -801,7 +801,7 @@ int UploadSMX(int Port, int  Baud, char echo)
 	j =0;
 	for (i =0; i <sizeof(Filename); i++)
 	{
-	
+
 		if ( (int) Filename[i] <= 32)
 		{
 			break;
@@ -811,14 +811,14 @@ int UploadSMX(int Port, int  Baud, char echo)
 	Filename[i+1] = 's';
 	Filename[i+2] = 'm';
 	Filename[i+3] = 'x';
-	
+
 	char Filename2[28];
-	
+
 	for(j=0;j<(i+4);j++)
 	{
 		Filename2[j]=Filename[j];
 	}
-	Filename[i+4] = 0;	
+	Filename[i+4] = 0;
 	SMX = open(Filename2, O_RDWR |O_APPEND | O_CREAT, 00007);
 	while(read(Port, (unsigned char*)&buf, 1)>0)
 	{
@@ -847,7 +847,7 @@ int UploadSMX(int Port, int  Baud, char echo)
 
 		write(SMX,(unsigned char*)&data,1);
 		write(Port, (unsigned char*)&a, 1);
-		
+
 	}
 	if(echo)
 	{
@@ -860,7 +860,7 @@ int UploadSMX(int Port, int  Baud, char echo)
 		 return -77;
 		}
 	}
-	
+
 
 	int count =0;
 	while(read(Port, (unsigned char*)&data, 1) >0)
@@ -870,7 +870,7 @@ int UploadSMX(int Port, int  Baud, char echo)
 			ClosePort(SMX);
 			return 0;
 		}
-		
+
 		if(write(SMX, (unsigned char*)&data,1) ==0)
 		{
 			return -4;
@@ -894,20 +894,21 @@ int UploadSMX(int Port, int  Baud, char echo)
 				}
 			}
 			count = 0;
-		}	
+		}
 	}
-	
+
 	ClosePort(SMX);
 	return 0;
 }
 
-// -------------------------------------------------------
+// // -------------------------------------------------------
 // // 'WriteCommand()' - Write Command to Motor
-// // Passes in the Serial Port, command  and baudrate
+// // Passes in the Serial Port, command  and baudrate, and MotorNo
+// // as Hex values.
 // // Returns the file descriptor on success or -1 on error.
 // // -----------------------------------------------------
 
-int WriteCommand(int Port, int Baud, char* Command,char echo)
+int WriteCommand(int Port, int Baud, char* Command,char echo, char* MotorNo)
 {
 	if( SetBaudrate(Port,Baud) != 0)
     	{
@@ -915,41 +916,43 @@ int WriteCommand(int Port, int Baud, char* Command,char echo)
 		return -1;
     	}
 
+	write(Port,(unsigned char*)&MotorNo, 1);
 	if(write(Port, Command,strlen(Command))==0)
 	{
 		return -1;
 	}
+
 	return 0;
 }
 
 // -------------------------------------------------------
-// // 'GetFileName()' - Gets file name from the Motor 
+// // 'GetFileName()' - Gets file name from the Motor
 // // Passes in the Serial Port and baudrate
 // // Returns the file descriptor on success or -1 on error.
 // // Returns the name of the file in Filename paramater
 // // -----------------------------------------------------
 int GetFileName(int Port, char* Filename, char echo)
-{	
+{
 	char buf, f;
 	char f1[12];
 	char message[8];
 	char nums[38] = "0123456789";
 	char nums2[28] ="1011121314151617181920212223";
-	int num1 =0;	
+	int num1 =0;
 	int k =0;
 	int i;
 	int j;
 	int countx =0;
 	int leave =1;
-	
+
 
 	for(i=0; i<24;i++)
 	{
-		
+
 		if( i <10)
 		{
 			sprintf(message,"%s%c%s","Rab[",nums[i],"] ");
-			
+
 			if(write(Port,( char*)&message, 7)==0)
 			{
 				return -111;
@@ -961,28 +964,28 @@ int GetFileName(int Port, char* Filename, char echo)
 					read(Port, (unsigned char*)&buf, 1);
 				}
 			}
-		
+
 			k=0;
 		}
 		else
 		{
 			sprintf(message, "%s%c%c%s","Rab[", nums2[countx], nums2[countx+1],"] ");
-		
-			
-		
-		
+
+
+
+
 			if(write(Port,(unsigned char*)&message, 8)==0)
 			{
 				return -222;
 			}
 			if(echo)
-			{	
+			{
 				for(k=0; k < 8;k++)
 			 	{
 					read(Port, (unsigned char*)&buf, 1);
 				}
 			}
-			
+
 			countx = countx +2;
 		}
 		j=0;
@@ -992,18 +995,18 @@ int GetFileName(int Port, char* Filename, char echo)
 			if( f != 0)
 			{
 				f1[j] = f;
-				
+
 			}
 			j++;
-			
-		}		
+
+		}
 		sscanf(f1,"%d", &num1);
 		if( num1 == 46 || num1 == 32)
-		{	
+		{
 			break;
 		}
 		Filename[i] = (char) num1;
-			
+
 	}
 	return 0;
 }
@@ -1029,7 +1032,7 @@ int GetFirmwareVersion(int Port, int Baud, char* temp, char echo)
 		return -1;
     	}
 	if(tcgetattr(Port, &options) < 0)
-	{	
+	{
 		return -1;
 	}
 	if ((options.c_cc[VMIN] != 0) || (options.c_cc[VTIME] != 10))
@@ -1038,18 +1041,18 @@ int GetFirmwareVersion(int Port, int Baud, char* temp, char echo)
 		options.c_cc[VTIME] = 10;
 		if(tcsetattr(Port, TCSANOW, &options) <0)
 		{
-			
+
 			return -1;
-		}		
+		}
 	}
-	
+
 	while(read(Port,&buf, 1)>0)
 	{
 	}
 	// Read firmware version from motor
 	if(write(Port,"RFW ",4)==0)
 	{
-	
+
 		return -2;
 	}
 	if(echo)
@@ -1079,7 +1082,7 @@ int GetFirmwareVersion(int Port, int Baud, char* temp, char echo)
 		}
 		q = q / 16;
 	}
-	printf("Firmware Version (hex): ");	
+	printf("Firmware Version (hex): ");
 	sprintf(temp,"%c%c.%c%c.%c%c.%c%c",hex[7],hex[6],hex[5],hex[4],hex[3],hex[2]
 			,hex[1],hex[0]);
 	for (i=1;i<16;i++)
@@ -1087,7 +1090,7 @@ int GetFirmwareVersion(int Port, int Baud, char* temp, char echo)
 		printf("%c",temp[i]);
 	}
 	puts(" ");
-	
+
 	return 0;
 }
 
@@ -1119,7 +1122,7 @@ int GetSerial(int Port, int Baud, char* temp, char echo)
 		return -1;
     	}
 	if(tcgetattr(Port, &options) < 0)
-	{	
+	{
 		return -1;
 	}
 	if ((options.c_cc[VMIN] != 0) || (options.c_cc[VTIME] != 10))
@@ -1128,11 +1131,11 @@ int GetSerial(int Port, int Baud, char* temp, char echo)
 		options.c_cc[VTIME] = 10;
 		if(tcsetattr(Port, TCSANOW, &options) <0)
 		{
-			
+
 			return -1;
-		}		
+		}
 	}
-	
+
 	while(read(Port,&buf, 1)>0)
 	{
 	}
@@ -1144,7 +1147,7 @@ int GetSerial(int Port, int Baud, char* temp, char echo)
 	if(echo)
 	{
 		for(i =0; i < 23; i++)
-		{	
+		{
 			read(Port,(unsigned char*)&buf, 1);
 		}
 	}
@@ -1155,7 +1158,7 @@ int GetSerial(int Port, int Baud, char* temp, char echo)
 		i++;
 	}
 	i=0;
-	
+
 	sscanf(hold,"%lu", &dec);
 	if(dec <= 0)
 	{
@@ -1181,11 +1184,11 @@ int GetSerial(int Port, int Baud, char* temp, char echo)
 	{
 		head[0] = hex[i-k];
 		head[1] = hex[i-k-1];
-		
+
 		if(i ==(j-1))
 		{
-			sscanf(head,"%04x",&tmp2);	
-			chr = (char) tmp2;	
+			sscanf(head,"%04x",&tmp2);
+			chr = (char) tmp2;
 		}
 		else
 		{
@@ -1201,7 +1204,7 @@ int GetSerial(int Port, int Baud, char* temp, char echo)
 	sprintf(temp,"%c%lu\n",tmp2, tmp1);
 	printf("Serial Number: %c%lu\n", tmp2,tmp1);
 
-	return 0;	
+	return 0;
 }
 
 // -------------------------------------------------------
@@ -1231,7 +1234,7 @@ int GetProdDate(int Port, int Baud, char* temp, char echo)
 		return -1;
     	}
 	if(tcgetattr(Port, &options) < 0)
-	{	
+	{
 		return -1;
 	}
 	if ((options.c_cc[VMIN] != 0) || (options.c_cc[VTIME] != 10))
@@ -1240,13 +1243,13 @@ int GetProdDate(int Port, int Baud, char* temp, char echo)
 		options.c_cc[VTIME] = 10;
 		if(tcsetattr(Port, TCSANOW, &options) <0)
 		{
-			
+
 			return -1;
-		}		
+		}
 	}
-		
+
 	while(read(Port,&buf, 1)>0)
-	{	
+	{
 	}
 
 	// Set EE Pointer, store value in a and read a from motor
@@ -1257,7 +1260,7 @@ int GetProdDate(int Port, int Baud, char* temp, char echo)
 	if(echo)
 	{
 		for(i =0; i < 23; i++)
-		{	
+		{
 			read(Port,(unsigned char*)&buf, 1);
 		}
 	}
@@ -1285,10 +1288,10 @@ int GetProdDate(int Port, int Baud, char* temp, char echo)
 		q = q / 16;
 		i++;
 	}
-	
+
 	if( i == 5)
 	{
-	
+
 		year[0]  = hex[j-1];
 		month[0] = hex[j-2];
 		month[1] = hex[j-3];
@@ -1337,11 +1340,13 @@ int GetProdDate(int Port, int Baud, char* temp, char echo)
 // // Returns value in the value parameter
 // // -----------------------------------------------------
 
-int GetValue(int Port, int Baud, char* Command, long value, char echo)
+int GetValue(int Port, int Baud, char* Command, long value, char echo, char* MotorNo)
 {
 	char buf;
 	int i;
 	struct termios options;
+
+	write(Port, (unsigned char*)&MotorNo, 1);
 
 	if( SetBaudrate(Port,Baud) != 0)
     	{
@@ -1349,7 +1354,7 @@ int GetValue(int Port, int Baud, char* Command, long value, char echo)
 		return -1;
     	}
 	if(tcgetattr(Port, &options) < 0)
-	{	
+	{
 		return -1;
 	}
 	if ((options.c_cc[VMIN] != 0) || (options.c_cc[VTIME] != 10))
@@ -1358,13 +1363,13 @@ int GetValue(int Port, int Baud, char* Command, long value, char echo)
 		options.c_cc[VTIME] = 10;
 		if(tcsetattr(Port, TCSANOW, &options) <0)
 		{
-			
+
 			return -1;
-		}		
+		}
 	}
-		
+
 	while(read(Port,&buf, 1)>0)
-	{	
+	{
 	}
 	if(write(Port,Command, sizeof(Command))==0)
 	{
@@ -1379,16 +1384,16 @@ int GetValue(int Port, int Baud, char* Command, long value, char echo)
 	}
 	int count = 0;
 	char hold [100];
-	
+
 	while(read(Port,(unsigned char*)&buf,1) > 0)
 	{
 		hold[count] = buf;
 		count ++;
 	}
 	sscanf(hold, "%ld", &value);
-	printf("%ld\n",value);
+	printf("%s%ld\n", "value: " , value);
 
-	return 0;
+	return value;
 }
 
 //test function for setting diff baudrates
@@ -1396,9 +1401,9 @@ int testBaud(int Port, int Baud)
 {
 	int bps[5] = {9600,19200,38400,57600,115200};
 	struct termios options;
-	
+
 	if(tcgetattr(Port, &options) < 0)
-	{	
+	{
 		return -1;
 	}
 	if ((options.c_cc[VMIN] != 0) || (options.c_cc[VTIME] != 10))
@@ -1407,16 +1412,16 @@ int testBaud(int Port, int Baud)
 		options.c_cc[VTIME] = 10;
 		if(tcsetattr(Port, TCSAFLUSH, &options) <0)
 		{
-			
+
 			return -1;
-		}		
+		}
 	}
 	if( SetBaudrate(Port,bps[1]) != 0)
     	{
 		puts("error setting baudrate");
 		return -1;
     	}
-	
+
 	int i;
 	char a= 0x80;
 	write(Port,(unsigned char*)&a, 1);
@@ -1424,7 +1429,7 @@ int testBaud(int Port, int Baud)
 	{
 		return -1;
 	}
-		
+
 	for(i=4; i>-1;i--)
 	{
 //		sleep(5);
@@ -1433,13 +1438,13 @@ int testBaud(int Port, int Baud)
 			puts("error setting baudrate");
 			return -2;
    		}
-			
+
 		write(Port,(unsigned char*)&a, 1);
 		if( write(Port,"WAKE ",5)==0)
 		{
 			return -1;
 		}
-		
+
 	}
 	return 0;
 }
@@ -1448,7 +1453,7 @@ int EstLinkNew(int Port, int Baud)
 {
 	char buf, gotwake,echo;
 	char a = 0x80;
-	int i; 
+	int i;
 	int MaxMotors;
 //	int MotorsFound = 0;
 	int SerialBitRates[5] = {9600,19200,38400,57600,115200};
@@ -1460,7 +1465,7 @@ int EstLinkNew(int Port, int Baud)
 		return -1;
     	}
 	if(tcgetattr(Port, &options) < 0)
-	{	
+	{
 		return -1;
 	}
 	if ((options.c_cc[VMIN] != 0) || (options.c_cc[VTIME] != 10))
@@ -1469,9 +1474,9 @@ int EstLinkNew(int Port, int Baud)
 		options.c_cc[VTIME] = 10;
 		if(tcsetattr(Port, TCSAFLUSH, &options) <0)
 		{
-			
+
 			return -1;
-		}		
+		}
 	}
 	echo = 0;
 	gotwake = 0;
@@ -1482,7 +1487,7 @@ int EstLinkNew(int Port, int Baud)
 	char found =0;
 	// try at configured baudrate
 	for (i=0; i < MaxMotors; i++)
-	{	
+	{
 		count = 0;
 		//purge
 		while(read(Port,&buf, 1)>0)
@@ -1535,9 +1540,9 @@ int EstLinkNew(int Port, int Baud)
 		{
 			gotwake =1;
 			found =0;
-			
+
 		}
-		
+
 	}
 
 	if(gotwake)
@@ -1581,7 +1586,7 @@ int EstLinkNew(int Port, int Baud)
 		if(echo ==0)
 		{
 			return 0;
-			
+
 		}
 		else
 		{
@@ -1590,14 +1595,14 @@ int EstLinkNew(int Port, int Baud)
 	}
 	else
 	{
-		// work down from 38400 first 
+		// work down from 38400 first
 		for(i=0; i< MaxMotors; i++)
 		{	count = 0;
 			found =0;
 			for(j=2; j> -1; j--)
 			{
-				
-						
+
+
 				sprintf(message,"BAUD%d ", SerialBitRates[j]);
 				write(Port,(unsigned char*)&a, 1);
 				write(Port, message, 10);
@@ -1616,10 +1621,10 @@ int EstLinkNew(int Port, int Baud)
 					puts("error setting baudrate");
 					return -1;
     				}
-				
+
 
 			}
-			
+
 			write(Port,(unsigned char*)&a, 1);
 			if( write(Port,"WAKE ",5)==0)
 			{
@@ -1667,22 +1672,22 @@ int EstLinkNew(int Port, int Baud)
 			}
 			if(found)
 			{
-				
+
 				gotwake= 1;
-			
+
 			}
-			
+
 
 		}
 
-		
+
 		if(gotwake)
-		{	
+		{
 			//original baud rate
-			
+
 			sprintf(message,"BAUD%d ", Baud);
 			write(Port,(unsigned char*)&a,1);
-			write(Port, message,10);			
+			write(Port, message,10);
 			if( SetBaudrate(Port,Baud) != 0)
     			{
 				puts("error setting baudrate");
@@ -1743,7 +1748,7 @@ int EstLinkNew(int Port, int Baud)
 		if(echo ==0)
 		{
 			return 0;
-		
+
 		}
 		else
 		{
@@ -1828,11 +1833,11 @@ int EstLinkNew(int Port, int Baud)
 				gotwake= 1;
 			}
 		}
-		
+
 		// last option in loop just try it
 		sprintf(message,"BAUD%d ", Baud);
 		write(Port,(unsigned char*)&a,1);
-		write(Port, message,10);			
+		write(Port, message,10);
 		if( SetBaudrate(Port,Baud) != 0)
     		{
 			puts("error setting baudrate");
@@ -1884,8 +1889,8 @@ int EstLinkNew(int Port, int Baud)
 		}
 		if(echo ==0)
 		{
-			return 0;	
-			
+			return 0;
+
 		}
 		else
 		{
@@ -1897,11 +1902,11 @@ int EstLinkNew(int Port, int Baud)
 }
 
 // -------------------------------------------------------
-// // 'DetectRS23()' 
+// // 'DetectRS23()'
 // // Detect motors on RS232 chain
 // // Passes in the Serial Port and baudrate
 // // Returns -1 on error.
-// // Return value based on what is detected 
+// // Return value based on what is detected
 // // Does not detect Baudrates 4800 and below
 // // ----------------------------------------------------
 int DetectRS232(int Port, int Baud)
@@ -1919,7 +1924,7 @@ int DetectRS232(int Port, int Baud)
 	retval = EstLinkNew(Port, Baud);
 	if(retval <0)
 	{
-		
+
 		return -1;
 	}
 	write(Port,(unsigned char*)&a,1);
@@ -1945,10 +1950,10 @@ int DetectRS232(int Port, int Baud)
 				if( buf == '0' || buf == '1')
 				{
 					resp =1;
-				}	
+				}
 			}
 			if(resp ==1)
-			{	
+			{
 				lastaddr++;
 				sprintf(addr_t,"ADDR=%d ",lastaddr);
 				write(Port,(unsigned char*)&f1,1);
@@ -1972,14 +1977,14 @@ int DetectRS232(int Port, int Baud)
 				MotorsFound++;
 			}
 			lastaddr=i;
-		
-			
 
-			
+
+
+
 
 		}
 	}
-	     
+
 	//Sleep detected motors
 	a = 0x80;
 	resp =0;
@@ -1998,7 +2003,7 @@ int DetectRS232(int Port, int Baud)
 	write(Port, "RBe ",4);
 	while( read(Port,(unsigned char*)&buf, 1) >0)
 	{
-		
+
 		if( buf == '0' || buf == '1')
 		{
 			MotorsFound++;
@@ -2065,7 +2070,7 @@ int DetectRS232(int Port, int Baud)
 }
 
 // -------------------------------------------------------
-// // 'AddressRS23()' 
+// // 'AddressRS23()'
 // // addresses motors on RS232 chain
 // // Passes in the Serial Port and baudrate
 // // Returns -1 on error.
@@ -2091,9 +2096,9 @@ int AddressRS232(int Port, int Baud)
 		if(val == 8) puts("Duplicate address"); // Duplicate address found
 		if(val == 16) puts("No Motor addressed");;// No motor addressed
 	}
-	
 
-	
+
+
 	write(Port,(unsigned char*)&a,1);
 	write(Port,"END ",4);
 	write(Port,(unsigned char*)&a,1);
@@ -2114,36 +2119,36 @@ int AddressRS232(int Port, int Baud)
 		sprintf(saddr,"SADDR%d ",MotorAddr);
 		write(Port,(unsigned char*)&a,1);
 		write(Port,saddr,9);
-		
+
 		write(Port,(unsigned char*)&b,1);
 		write(Port,"ECHO ",5);
 		write(Port,(unsigned char*)&b,1);
 		write(Port,"SLEEP ",6);
 		read(Port,(unsigned char*)&buf,1);
-		
+
 		MotorNo ++;
-		
+
 		if(MotorNo >= MaxMotors)
 		{
 			cont =0;
 		}
-		
-		
+
+
 
 	}
 	MotorNo++;
 
 	write(Port,(unsigned char*)&a,1);
 	write(Port,"WAKE ",5);
-	// to check addressing 
+	// to check addressing
 	write(Port,(unsigned char*)&a,1);
 	write(Port,"RADDR ",6);
-	
+
 	return 0;
 }
 
 // -------------------------------------------------------
-// // 'DetectRS485()' 
+// // 'DetectRS485()'
 // // Detects Motors across RS485
 // // Passes in the Serial Port and baudrate
 // // Returns -1 on error.
@@ -2167,7 +2172,7 @@ int DetectRS485(int Port, int Baud)
 		return -1;
     	}
 	if(tcgetattr(Port, &options) < 0)
-	{	
+	{
 		return -1;
 	}
 	if ((options.c_cc[VMIN] != 0) || (options.c_cc[VTIME] != 10))
@@ -2176,9 +2181,9 @@ int DetectRS485(int Port, int Baud)
 		options.c_cc[VTIME] = 10;
 		if(tcsetattr(Port, TCSAFLUSH, &options) <0)
 		{
-			
+
 			return -1;
-		}		
+		}
 	}
 	write(Port,(unsigned char*)&a,1);
 	write(Port,"WAKE1 ",6);
@@ -2186,7 +2191,7 @@ int DetectRS485(int Port, int Baud)
 	write(Port,"WAKE1 ",6);
 	write(Port,(unsigned char*)&a,1);
 	write(Port,"IFX ",4);
-	
+
 
 
 	for(i=1;i<=MaxMotors+1;i++)
@@ -2220,10 +2225,10 @@ int DetectRS485(int Port, int Baud)
 		{
 			while(read(Port,(unsigned char*)&buf,1)>0)
 			{
-			}		
+			}
 			write(Port,(unsigned char*)&a,1);
 			write(Port,"RBe ",4);
-			
+
 			while( read(Port,(unsigned char*)&buf, 1) >0)
 			{
 				if( buf == '0' || buf == '1')
@@ -2231,10 +2236,10 @@ int DetectRS485(int Port, int Baud)
 					resp =1;
 				}
 			}
-			
+
 			if(resp ==1)
 			{
-				MotorsFound++;	
+				MotorsFound++;
 			}
 			lastaddr =i;
 		}
@@ -2247,7 +2252,7 @@ int DetectRS485(int Port, int Baud)
 		a++;
 		write(Port,(unsigned char*)&a,1);
 		write(Port,"SLEEP1 ",7);
-	
+
 	}
 	a=0x80;
 	resp =0;
@@ -2279,7 +2284,7 @@ int DetectRS485(int Port, int Baud)
 			a = a+i;
 			write(Port,(unsigned char*)&a,1);
 			write(Port,"SLEEP1 ",7);
-			a=0x80;	
+			a=0x80;
 		}
 		while(read(Port,(unsigned char*)&buf,1)>0)
 		{
@@ -2300,7 +2305,7 @@ int DetectRS485(int Port, int Baud)
 	}
 	write(Port,(unsigned char*)&a,1);
 	write(Port,"WAKE1 ",6);
-	
+
 	if(MoreMotors)
 	{
 		if(Unaddressed)
@@ -2322,9 +2327,9 @@ int DetectRS485(int Port, int Baud)
 			return 4;
 		}
 
-			
-	}	
-	
+
+	}
+
 	return 0;
 }
 
@@ -2340,7 +2345,7 @@ int DriveReady(int Port, int Baud)
 		return -1;
     	}
 	if(tcgetattr(Port, &options) < 0)
-	{	
+	{
 		return -1;
 	}
 	if ((options.c_cc[VMIN] != 0) || (options.c_cc[VTIME] != 10))
@@ -2349,15 +2354,15 @@ int DriveReady(int Port, int Baud)
 		options.c_cc[VTIME] = 10;
 		if(tcsetattr(Port, TCSANOW, &options) <0)
 		{
-			
+
 			return -1;
-		}		
+		}
 	}
-		
+
 	while(read(Port,&buf, 1)>0)
 	{
 	}
-	
+
 	char B00,IN7;
 	char Ba,IN12,Bh;
 	char Be,B03,Bv;
@@ -2382,7 +2387,7 @@ int DriveReady(int Port, int Baud)
 
 	}
 	sscanf(FWarray,"%lu",&FW);
-	
+
 	write(Port,"RIN(7) ",7);
 	read(Port,(unsigned char*)&IN7,1);
 	write(Port,"RBa ",4);
@@ -2425,7 +2430,7 @@ int DriveReady(int Port, int Baud)
 
 	///////////////////////////////////
 	// first look at low voltage and drive enable input which can prevent drive ready
-	if(B00 != '0')	
+	if(B00 != '0')
 	{
 		// Clear drive voltage low flag to see is condition is still true
 		write(Port,"Z(6,13) ",8);
@@ -2535,7 +2540,3 @@ int DriveReady(int Port, int Baud)
 
 	return 0;
 }
-
-
-
-
