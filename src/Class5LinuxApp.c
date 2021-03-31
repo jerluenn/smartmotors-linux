@@ -13,7 +13,7 @@ int DownloadSmxeFile(int Port, int SMXE, int Baud, char echo);
 int DownloadFirmware(int Port, int Firmware, int Baud, char ehco);
 int UploadSMS(int Port, int Baud,  char echo);
 int UploadSMX(int Port, int Baud, char echo);
-int WriteCommand(int Port, int Baud, char* Command,char echo, char* MotorNo)
+int WriteCommand(int Port, int Baud, char* Command,char echo, char* MotorNo);
 int GetFileName(int Port, char* Filename, char echo);
 int GetFirmwareVersion(int Port, int Baud, char* temp, char echo);
 int GetSerial(int Port, int Baud, char* temp, char echo);
@@ -1383,7 +1383,7 @@ int GetValue(int Port, int Baud, char* Command, long value, char echo, char* Mot
 		}
 	}
 	int count = 0;
-	char hold [100];
+	char hold [20];
 
 	while(read(Port,(unsigned char*)&buf,1) > 0)
 	{

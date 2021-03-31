@@ -45,7 +45,14 @@ int main(void)
 //	x = GetFirmwareVersion(Port, Baud, temp ,1);
 //	x = GetSerial(Port, Baud, temp,1);		
 //	x = GetProdDate(Port, Baud, temp, 1);
+	x = GetValue(Port, Baud, "RPA ", value, 1, 0x84);
+	printf("%s%d\n", "value: ", x);
 	x = GetValue(Port, Baud, "RPA ", value, 1, 0x81);
+	printf("%s%d\n", "value: ", x);
+	x = GetValue(Port, Baud, "RPA ", value, 1, 0x82);
+	printf("%s%d\n", "value: ", x);
+	x = GetValue(Port, Baud, "RPA ", value, 1, 0x83);
+	printf("%s%d\n", "value: ", x);
 //	x = EstLinkNew(Port, Baud);
 //	x = DetectRS232(Port, Baud);
 //	x = AddressRS232(Port, Baud);
@@ -53,7 +60,6 @@ int main(void)
 	if ( x >= 0)
    	{
 		puts("Complete");
-		printf("%s%d\n", "s: ", x);
    	}
    	else
    	{
