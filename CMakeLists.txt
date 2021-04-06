@@ -37,9 +37,14 @@ include_directories(
   ${EIGEN3_INCLUDE_DIRS}
 )
 
+
 add_library(smartmotors-linux src/Class5LinuxApp.c)
 
-add_executable(testcpp src/testcpp.cpp src/Class5LinuxApp.c)
+# add_executable(testcpp src/smartmotor.cpp src/testcpp.cpp src/Class5LinuxApp.c)
+
+add_executable(smartmotors src/smartmotor.cpp src/Class5LinuxApp.c src/wrapper.cpp)
+
+target_link_libraries(smartmotors ${catkin_LIBRARIES})
 
 install(TARGETS smartmotors-linux
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

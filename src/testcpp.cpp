@@ -6,6 +6,20 @@
 
 using namespace std;
 
+class smartmotors {
+
+  public:
+
+    smartmotors(){
+
+      int Port =0;
+      int Baud = 9600;
+      Port = OpenPort();
+
+    }
+
+};
+
 int main() {
 
   int Port =0;
@@ -14,7 +28,6 @@ int main() {
   int Firmware = 0;
   int x;
   int Baud = 9600;
-  // int value;
 	char temp[16]; 	// needed for some tests
 	long value=0; 	// needed for some tests
   puts("Start..");
@@ -29,22 +42,14 @@ int main() {
 
   int a = 0x80;
   int aa = 0x81;
-  cout << a << endl;
+  cout << a + 2 << endl;
   char* b = "MP ";
   char* c = "PT=1000 ";
   char* d = "G ";
-
   cout << Port << endl;
-  // DetectRS232(Port, Baud);
-  // cout << "Detection Complete" << endl;
-  // AddressRS232(Port, Baud);
-  // cout << "Addresing Complete" << endl;
   WriteCommand(Port, Baud, b , 1, a);
   WriteCommand(Port, Baud, "PT=5000 ", 1, aa);
   WriteCommand(Port, Baud, "G ", 1 , aa);
-
-
-
 
   return 0;
 
