@@ -13,8 +13,8 @@ int DownloadSmxeFile(int Port, int SMXE, int Baud, char echo);
 int DownloadFirmware(int Port, int Firmware, int Baud, char ehco);
 int UploadSMS(int Port, int Baud,  char echo);
 int UploadSMX(int Port, int Baud, char echo);
-// int WriteCommand(int Port, int Baud, char* Command,char echo, char* MotorNo);
 int WriteCommand(int Port, int Baud, char* Command,char echo, int MotorNo);
+// int WriteCommand(int Port, int Baud, char* Command,char echo);
 int GetFileName(int Port, char* Filename, char echo);
 int GetFirmwareVersion(int Port, int Baud, char* temp, char echo);
 int GetSerial(int Port, int Baud, char* temp, char echo);
@@ -915,10 +915,10 @@ int WriteCommand(int Port, int Baud, char* Command,char echo, int MotorNo)
     	{
 		puts("error setting baudrate");
 		return -1;
+
     	}
 
-	write(Port,(unsigned char*)&MotorNo, 1);
-	// write(Port,(unsigned char*)&MotorNo, 1);
+	write(Port, (unsigned char*)&MotorNo, 1);
 	if(write(Port, Command,strlen(Command))==0)
 	{
 		return -1;

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(smartmotors-linux)
+project(smartmotors_linux)
 
 
 find_package(catkin REQUIRED
@@ -8,6 +8,7 @@ find_package(catkin REQUIRED
   	sensor_msgs
   	std_msgs
 	geometry_msgs
+	message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -23,9 +24,21 @@ if(NOT EIGEN3_FOUND)
   set(EIGEN3_LIBRARIES ${EIGEN_LIBRARIES})
 endif()
 
+add_message_files(
+
+  FILES
+  command.msg
+
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+
 catkin_package(
 	INCLUDE_DIRS include 
-	LIBRARIES smartmotors-linux
+	LIBRARIES smartmotors_linux
 	CATKIN_DEPENDS 	roscpp sensor_msgs std_msgs geometry_msgs
 	DEPENDS EIGEN3
 )
@@ -37,13 +50,20 @@ include_directories(
   ${EIGEN3_INCLUDE_DIRS}
 )
 
-add_library(smartmotors-linux src/Class5LinuxApp.c)
 
-add_executable(testcpp src/testcpp.cpp src/Class5LinuxApp.c)
+add_library(smartmotors_linux src/Class5LinuxApp.c)
 
-install(TARGETS smartmotors-linux
+# add_executable(testcpp src/smartmotor.cpp src/testcpp.cpp src/Class5LinuxApp.c)
+
+add_executable(smartmotors src/smartmotor.cpp src/Class5LinuxApp.c src/wrapper.cpp)
+
+target_link_libraries(smartmotors ${catkin_LIBRARIES})
+
+install(TARGETS smartmotors_linux
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )
+
+
 
