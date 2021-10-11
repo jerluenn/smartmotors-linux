@@ -2,18 +2,21 @@
 #include "std_msgs/String.h"
 #include "std_msgs/Float64MultiArray.h"
 #include "std_msgs/Int64MultiArray.h"
+#include "smartmotors_linux/command.h"
 #include <stdio.h>
 #include <wrapper.h>
 
-void callback(const std_msgs::Float64MultiArray::ConstPtr& msg){
+SmartMotors s;
 
-  std::cout << msg->data[1] << std::endl;
-  std::cout << line << std::endl;
-  char* line2 = "G ";
-  int a = 1;
-  SmartMotors s;
-  s.command(line, a);
-  s.command(line2, a);
+void callback(const smartmotors_linux::command::ConstPtr& msg){
+
+  char* line;
+  int num;
+  line = (char*)msg->motorcommand.c_str(); 
+  num = msg->motorno;
+  // std::cout << msg->data.c_str() << std::endl;
+  std::cout << num << line << std::endl;
+  s.command(line, num);
 
 }
 

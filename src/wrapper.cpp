@@ -7,25 +7,27 @@
 
 using namespace std;
 
-SmartMotors::SmartMotors(){
+SmartMotors::SmartMotors()
+{
 
   Port = OpenPort();
+}
+
+void SmartMotors::command(char *line, int MotorNo)
+{
+  
+  int motor;
+  motor = Base + MotorNo;
+  std::cout << motor << std::endl;
+  WriteCommand(Port, Baud, line, 1, motor);
 
 }
 
-void SmartMotors::command(char* line, int MotorNo){
+void SmartMotors::commandAll(char *line)
+{
 
-  int number = Base + MotorNo;
-  WriteCommand(Port, Baud, line, 1, number);
-
+  WriteCommand(Port, Baud, line, 1, 0);
 }
-
-void SmartMotors::commandAll(char* line){
-
-  WriteCommand(Port, Baud, line, 1, Base);
-
-}
-
 
 // class SmartMotors {
 //

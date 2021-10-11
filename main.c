@@ -38,18 +38,17 @@ int main(void)
 //	x = UploadSMS(Port,Baud,1);
 //	x = DownloadFirmware(Port,Firmware, Baud,1);
 //	x = WriteCommand(Port, Baud, "RPA ", 4);
-	x = WriteCommand(Port, Baud, "MT ", 1, 0x80);
-	x = WriteCommand(Port, Baud, "T=0 ", 1, 0x80);
-	x = WriteCommand(Port, Baud, "G ", 1, 0x80);
-	x = WriteCommand(Port, Baud, "RPA ", 0, 0x80);
+	x = WriteCommand(Port, Baud, "MT ", 1, 0x81);
+	x = WriteCommand(Port, Baud, "T=2500 ", 1, 0x81);
+	x = WriteCommand(Port, Baud, "G ", 1, 0x81);
+	x = WriteCommand(Port, Baud, "X ", 0, 0x81);
 //	x = GetFirmwareVersion(Port, Baud, temp ,1);
 //	x = GetSerial(Port, Baud, temp,1);		
 //	x = GetProdDate(Port, Baud, temp, 1);
-	x = GetValue(Port, Baud, "RPA ", value, 1, 0x84);
+	
+	x = GetValue(Port, Baud, "RPA ", value, 1, 0x83);
 	printf("%s%d\n", "value: ", x);
-	x = GetValue(Port, Baud, "RPA ", value, 1, 0x81);
-	printf("%s%d\n", "value: ", x);
-	x = GetValue(Port, Baud, "RPA ", value, 1, 0x82);
+	x = GetValue(Port, Baud, "RPA ", value, 1, 0x83);
 	printf("%s%d\n", "value: ", x);
 	x = GetValue(Port, Baud, "RPA ", value, 1, 0x83);
 	printf("%s%d\n", "value: ", x);
