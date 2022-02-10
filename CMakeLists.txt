@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(smartmotors_linux)
 
-
+add_compile_options(-std=c++11)
 find_package(catkin REQUIRED
 	COMPONENTS
 	roscpp
@@ -27,6 +27,7 @@ endif()
 add_message_files(
 
   FILES
+  arraycommand.msg
   command.msg
 
 )
@@ -39,7 +40,7 @@ generate_messages(
 catkin_package(
 	INCLUDE_DIRS include 
 	LIBRARIES smartmotors_linux
-	CATKIN_DEPENDS 	roscpp sensor_msgs std_msgs geometry_msgs
+	CATKIN_DEPENDS 	roscpp sensor_msgs std_msgs geometry_msgs message_runtime
 	DEPENDS EIGEN3
 )
 
@@ -55,9 +56,11 @@ add_library(smartmotors_linux src/Class5LinuxApp.c)
 
 # add_executable(testcpp src/smartmotor.cpp src/testcpp.cpp src/Class5LinuxApp.c)
 
-add_executable(smartmotors src/smartmotor.cpp src/Class5LinuxApp.c src/wrapper.cpp)
+add_executable(smartmotors src/smartmotor.cpp src/wrapper.cpp)
+add_executable(pid_tension src/pid_tension.cpp)
 
-target_link_libraries(smartmotors ${catkin_LIBRARIES})
+target_link_libraries(smartmotors ${catkin_LIBRARIES} smartmotors_linux)
+target_link_libraries(pid_tension ${catkin_LIBRARIES} smartmotors_linux)
 
 install(TARGETS smartmotors_linux
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

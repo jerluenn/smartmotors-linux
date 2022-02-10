@@ -918,6 +918,8 @@ int WriteCommand(int Port, int Baud, char* Command,char echo, int MotorNo)
 
     	}
 
+
+
 	write(Port, (unsigned char*)&MotorNo, 1);
 	if(write(Port, Command,strlen(Command))==0)
 	{
@@ -1210,7 +1212,6 @@ int GetSerial(int Port, int Baud, char* temp, char echo)
 }
 
 // -------------------------------------------------------
-// // 'GetProdDate()' - Get Animatic production date from motor
 // // Passes in the Serial Port and baudrate
 // // Returns the file descriptor on success or -1 on error.
 // // Returns the date in temp parameter
