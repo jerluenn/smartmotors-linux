@@ -15,9 +15,9 @@ class pid_controller {
 
     private: 
     double Kp, Ki, Kd;
-    double Kp_rail = 500;
+    double Kp_rail = 250;
     double Kd_rail = 0.0; 
-    double Kp_gripper = 500;
+    double Kp_gripper = 250;
     double Kd_gripper = 0.0; 
     double dt; 
     const int sensor_count = 6;
@@ -55,7 +55,7 @@ class pid_controller {
         control_input.resize(sensor_count);
         error.resize(sensor_count);
         // ref.setZero();
-        ref << 10.0, 10.0, 10.0, 10.0, 80.0, 80.0;
+        ref << 50.0, 50.0, 50.0, 50.0, 50.0, 80.0;
         integral_error.resize(sensor_count); 
         integral_error.setZero();
         str_command = "VT";
@@ -80,8 +80,36 @@ class pid_controller {
         ref[4] -= msg.axes[7] * linear_rail_gain; 
         ref[5] += msg.axes[6] * gripper_gain; 
 
-    }
+        if (msg.buttons[1] == 1) {
 
+            ros::Rate looprate(10);
+
+            str_command = "MT ";
+            sm_msg.motorcommand = str_command;
+            sm_msg.motorno = 0;
+            pub_sm.publish(sm_msg);
+            looprate.sleep();
+
+            str_command = "T=0 ";
+            sm_msg.motorcommand = str_command;
+            pub_sm.publish(sm_msg);
+            looprate.sleep();
+
+            str_command = "G ";
+            sm_msg.motorcommand = str_command;
+            pub_sm.publish(sm_msg);
+            looprate.sleep();
+
+            str_command = "X ";
+            sm_msg.motorcommand = str_command;
+            pub_sm.publish(sm_msg);
+            looprate.sleep();
+
+            ros::shutdown();
+
+        }
+
+    }
 
     void ref_tensions_callback(const std_msgs::Float64MultiArray& msg) {
 
@@ -101,11 +129,17 @@ class pid_controller {
         Eigen::VectorXd measurements = Eigen::VectorXd::Map(msg.data.data(), msg.data.size());
         error = ref - measurements;
 
-        control_input.head(4) = - (Kp * error.head(4) - Kd * (error.head(4) - previous_error.head(4))/dt);  // This is for P PID controller! 
+        // for (int i = 0; i < 4; i++) {
+
+        //     control_input[i] = - 1000 * pow(abs(error[i]), 0.6) * tanh(error[i]);
+
+        // }
+        control_input.head(4) = - (Kp * error.head(4) + Kd * (error.head(4) - previous_error.head(4))/dt);  // This is for P PID controller! 
         control_input[4] = - (Kp_rail * error[4] - Kd_rail * (error[4] - previous_error[4])/dt);
-        control_input[5] = - (Kp_gripper * error[5] - Kd_gripper * (error[5] - previous_error[5])/dt);
+        control_input[5] = - (Kp_gripper * error[5] + Kd_gripper * (error[5] - previous_error[5])/dt);
         apply_upper_limit(control_input);
 
+        std::cout << "de: " << (error - previous_error)/dt << std::endl;
         std::cout << "Ref: " << ref << std::endl;
         std::cout << "Control input: " << control_input.array() << std::endl;
         std::vector<int> control_vector(control_input.data(), control_input.data() + control_input.size());
@@ -135,7 +169,7 @@ class pid_controller {
 
     void initialise() {
 
-        str_command = "ADT=3000 "; 
+        str_command = "ADT=1000 "; 
         sm_msg.motorcommand = str_command;
         pub_sm.publish(sm_msg);
 
@@ -189,7 +223,7 @@ class pid_controller {
             sm_msg.motorcommand = str_command;
             sm_msg.motorno = 0; 
             pub_sm.publish(sm_msg);
-        
+
         }
 
 
@@ -203,7 +237,7 @@ int main(int argc, char** argv){
 
     ros::init(argc, argv, "sm_pid_tension");
     ros::NodeHandle n;
-    pid_controller controller = pid_controller(&n, 800, 0.0, 0.0); 
+    pid_controller controller = pid_controller(&n, 600, 0.0, -0.0); 
     ros::spin();
 
 } 
