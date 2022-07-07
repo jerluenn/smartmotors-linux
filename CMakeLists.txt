@@ -53,12 +53,13 @@ include_directories(
 
 
 add_library(smartmotors_linux src/Class5LinuxApp.c)
-
-# add_executable(testcpp src/smartmotor.cpp src/testcpp.cpp src/Class5LinuxApp.c)
+add_library(MedianFilter src/medianfilter.cpp)
 
 add_executable(smartmotors src/smartmotor.cpp src/wrapper.cpp)
 add_executable(pid_tension src/pid_tension.cpp)
+add_executable(testMedianFilter src/testMedianFilter.cpp)
 
+target_link_libraries(testMedianFilter MedianFilter)
 target_link_libraries(smartmotors ${catkin_LIBRARIES} smartmotors_linux)
 target_link_libraries(pid_tension ${catkin_LIBRARIES} smartmotors_linux)
 
