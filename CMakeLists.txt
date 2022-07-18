@@ -59,7 +59,7 @@ add_executable(smartmotors src/smartmotor.cpp src/wrapper.cpp)
 add_executable(pid_tension src/pid_tension.cpp)
 add_executable(testMedianFilter src/testMedianFilter.cpp)
 
-target_link_libraries(testMedianFilter MedianFilter)
+target_link_libraries(testMedianFilter ${catkin_LIBRARIES} MedianFilter)
 target_link_libraries(smartmotors ${catkin_LIBRARIES} smartmotors_linux)
 target_link_libraries(pid_tension ${catkin_LIBRARIES} smartmotors_linux)
 

@@ -48,15 +48,20 @@ void MedianFilter::computeMedian()
 
     double median;
 
+
     for (int i = 0; i < num_meas; ++i)
 
         {
 
-            std::sort(window_data[i].begin(), window_data[i].end());
-            median = window_data[i][window_data[i].size() / 2];
+            std::vector<double> window_data_tmp = window_data[i];
+            std::sort(window_data_tmp.begin(), window_data_tmp.end());
+            median = window_data_tmp[window_data_tmp.size() / 2];
             outputVector(i) = median;
 
+
         }
+
+
 
 
 } 

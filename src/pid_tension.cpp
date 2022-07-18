@@ -55,7 +55,7 @@ class pid_controller {
         control_input.resize(sensor_count);
         error.resize(sensor_count);
         // ref.setZero();
-        ref << 50.0, 50.0, 50.0, 50.0, 50.0, 80.0;
+        ref << 50.0, 50.0, 0, 0, 0, 80.0;
         integral_error.resize(sensor_count); 
         integral_error.setZero();
         str_command = "VT";
