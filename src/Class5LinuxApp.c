@@ -73,7 +73,7 @@ int testfunc(int Port)
 		struct termios options;
 		int Port = 0;
 
-		Port =open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY);
+		Port =open("/dev/ttyUSB1", O_RDWR | O_NOCTTY | O_NDELAY);
 
 		if (Port == -1)
 		{
