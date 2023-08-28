@@ -73,13 +73,35 @@ int testfunc(int Port)
 		struct termios options;
 		int Port = 0;
 
-		Port =open("/dev/ttyUSB1", O_RDWR | O_NOCTTY | O_NDELAY);
+		Port =open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY);
 
 		if (Port == -1)
 		{
-			puts("error opening Port");
-			return -1;
+		
+		puts("error opening Port ttyUSB0, now trying ttyUSB1");
+		
+			Port = open("/dev/ttyUSB1", O_RDWR | O_NOCTTY | O_NDELAY);
+			
+			if (Port == -1)
+			
+			{
+			
+				puts("error opening Port ttyUSB1");
+				return -1;
+				
+			}
+			
+			else 
+			{
+		
+				puts("Port ttyUSB1 opened."); 
+		
+			}
 		}
+		
+		
+			
+		
 
 		fcntl(Port, F_SETFL,0);
 

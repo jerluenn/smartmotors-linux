@@ -1,0 +1,9 @@
+<launch>
+	<arg name="arduino_port" default="/dev/ttyACM0" />
+	<node pkg="smartmotors_linux" type="pid_tension" name="pid_tension" output="screen" >
+	</node>
+	<node pkg="rosserial_python" type="serial_node.py" name="serial_node" output="screen" >
+        <param name="_port:="  value="$(arg arduino_port)"/>
+	</node>
+  </launch>
+  

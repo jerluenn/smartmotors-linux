@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(smartmotors_linux)
 
+
+set(CMAKE_BUILD_TYPE Debug)
 add_compile_options(-std=c++11)
 find_package(catkin REQUIRED
 	COMPONENTS
@@ -32,6 +34,12 @@ add_message_files(
 
 )
 
+add_service_files(
+  FILES
+  emergencyStop.srv
+  setAllMotorTensions.srv
+)
+
 generate_messages(
   DEPENDENCIES
   std_msgs
@@ -51,7 +59,6 @@ include_directories(
   ${EIGEN3_INCLUDE_DIRS}
 )
 
-
 add_library(smartmotors_linux src/Class5LinuxApp.c)
 add_library(MedianFilter src/medianfilter.cpp)
 
@@ -67,6 +74,7 @@ install(TARGETS smartmotors_linux
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )
 
 

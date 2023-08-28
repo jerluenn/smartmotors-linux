@@ -39,8 +39,8 @@ void array_callback(const smartmotors_linux::arraycommand::ConstPtr& msg) {
     num = i+1;
     str = std::to_string(msg->motorarrayvalues[i]);
     line = (char*)(msg->motorcommand + '=' + str + ' ').c_str();
-    std::cout << num << line << std::endl;
-    std::cout << num << (char*)gostr.c_str() << std::endl;
+    // std::cout << num << line << std::endl;
+    // std::cout << num << (char*)gostr.c_str() << std::endl;
     s.command(line, num);
     s.command((char*)gostr.c_str(), num);
 
@@ -48,7 +48,7 @@ void array_callback(const smartmotors_linux::arraycommand::ConstPtr& msg) {
 
   auto t_end = std::chrono::high_resolution_clock::now();
   double elapsed_time_ms = std::chrono::duration<double, std::milli>(t_end-t_start).count();
-  std::cout << "Time elapsed: " << elapsed_time_ms/1000 << std::endl;
+  // std::cout << "Time elapsed: " << elapsed_time_ms/1000 << std::endl;
 
 }
 
