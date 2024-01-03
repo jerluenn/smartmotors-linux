@@ -5,6 +5,7 @@
 #include <iostream>
 #include <wrapper.h>
 #include <chrono>
+#include <cstdlib>
 
 using namespace std;
 
@@ -12,7 +13,61 @@ SmartMotors::SmartMotors()
 {
 
   Port = OpenPort();
+  int SMX = 0; 
+	int SMXE = 0;
+	int Firmware = 0;
+  int flag = 0;
+  SMX = open("/home/jerluennn/catkin_ws/src/smartmotors-linux/testSMX.smx", O_RDWR | O_NOCTTY);
+  SMXE = open("/home/jerluennn/catkin_ws/src/smartmotors-linux/testSMXe.smxe", O_RDWR | O_NOCTTY);
+	Firmware = open("/home/jerluennn/catkin_ws/src/smartmotors-linux/class_5_0_4_31.hez", O_RDWR | O_NOCTTY);
+    	if (Port < 0|| SMX < 0 || SMXE < 0 || Firmware <0)
+    	{
+          printf("%d\n",Port);
+          printf("%d\n",SMX);
+          printf("%d\n",SMXE);
+          printf("%d\n",Firmware);
+        	puts("error opening a file");
+    	}
   AddressRS232(Port, Baud);
+  // std::atexit(exiting);
+  // Baud = 115200; 
+  // flag = SetBaudrate(Port, Baud);
+  // if (flag == -1) {
+
+  //         puts("Set baud rate failed.");
+
+  // }
+
+  // else if (flag == 0) {
+
+
+  //         printf("Baud rate set to %d\n", Baud);
+
+  // }
+
+
+}
+
+// void Smartmotors::exiting() 
+
+// {
+
+//   ClosePort(Port);
+
+// }
+
+  
+
+void SmartMotors::read(char* line, int MotorNo) 
+
+{
+
+  long value = 0;
+  long v = 0;
+  int motor;
+  motor = Base + MotorNo;
+  value = GetValue(Port, Baud, line, v, 1);
+  std::cout << value; 
 
 }
 

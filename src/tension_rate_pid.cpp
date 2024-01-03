@@ -8,81 +8,99 @@
 #include "smartmotors_linux/emergencyStop.h"
 #include <stdio.h>
 #include <string.h>
+#include <string>
 #include "sensor_msgs/Joy.h"
 #include <stack>
 #include <chrono>
 #include <cmath>
 #include <Eigen/Dense>
+#include <medianfilter.hpp>
 
-class pid_controller {
+
+class tension_rate_controller 
+
+{
 
     private: 
     double Kp, Ki, Kd;
-    double Kp_rail = 250;
-    double Kd_rail = 0.0; 
-    double Kp_gripper = 250;
-    double Kd_gripper = 0.0; 
     double dt; 
-    const int sensor_count = 4;
-    double gripper_gain = -5.0;
-    double linear_rail_gain = 5.0;
+    int sensor_count; 
     double max_vel = 300000;
     ros::Publisher pub_sm_array; 
     ros::Publisher pub_sm;
     ros::Publisher str_pub;
+    ros::Publisher pubFilteredResults;
+    ros::Publisher pubFilteredTensionRates;
     ros::Subscriber sub;
     ros::Subscriber sub2;
     ros::Subscriber sub3;
+    ros::Subscriber sub4; 
     ros::ServiceServer srv1;
     ros::ServiceServer srv2;
     ros::ServiceServer srv3;
     Eigen::VectorXd integral_error;
     Eigen::VectorXd previous_error;
     Eigen::VectorXd ref; 
-    Eigen::VectorXd ref_arm; 
+    Eigen::VectorXd ref_arm;
     Eigen::VectorXd error;
     Eigen::VectorXd control_input; 
     Eigen::VectorXd initial_input;
+    Eigen::VectorXd measurements_filtered; 
+    Eigen::VectorXd measurements_filtered_previous; 
+    Eigen::VectorXd tension_rate_filtered; 
     smartmotors_linux::arraycommand control_msg;
     smartmotors_linux::command sm_msg;
+    MedianFilter* filter;
+    std_msgs::Float64MultiArray filteredResultsMsg;
+    std_msgs::Float64MultiArray filteredTensionRateMsg;
     // std::vector<float> control_vector;   
     std::string str_command; 
 
-
     public: 
-    pid_controller(ros::NodeHandle *n, double K_p, double K_i, double K_d) {
+    tension_rate_controller (ros::NodeHandle *n, double K_p, double K_i, double K_d, int sens_count, MedianFilter* filter_) {
 
+        sensor_count = sens_count;
+        filter = filter_;
+        tension_rate_filtered.resize(sensor_count);
+        tension_rate_filtered.setZero();
+        measurements_filtered.resize(sensor_count);
+        measurements_filtered.setZero();
+        measurements_filtered_previous.resize(sensor_count);
+        measurements_filtered_previous.setZero();
         initial_input.resize(sensor_count);
         initial_input.setOnes();
         initial_input *= 50000; 
         previous_error.resize(sensor_count); 
         previous_error.setZero();
         ref.resize(sensor_count); 
+        ref.setOnes();
+        ref *= -100;
         control_input.resize(sensor_count);
         error.resize(sensor_count);
-        // ref.setZero();
-        ref << 100.0, 100.0, 100.0, 100.0;
         integral_error.resize(sensor_count); 
         integral_error.setZero();
         str_command = "VT";
         control_msg.motorcommand = str_command;
-        dt = 1.0/80.0;
+        dt = 1.0/86.0;
         Kp = K_p; 
         Ki = K_i; 
         Kd = K_d;
-        pub_sm_array = n->advertise<smartmotors_linux::arraycommand>("smartmotor_array_command", 10); // for arrays.
-        pub_sm = n->advertise<smartmotors_linux::command>("smartmotor_command", 10);
+        pub_sm_array = n->advertise<smartmotors_linux::arraycommand>("/smartmotor_array_command", 10); // for arrays.
+        pubFilteredResults = n->advertise<std_msgs::Float64MultiArray>("/loadcell_filtered", 10);
+        pubFilteredTensionRates = n->advertise<std_msgs::Float64MultiArray>("/tension_rate_filtered", 10);
+        pub_sm = n->advertise<smartmotors_linux::command>("/smartmotor_command", 10);
         ros::Rate rate(1);
         rate.sleep();
         initialise();
-        srv1 = n->advertiseService("set_motor_tensions", &pid_controller::set_motor_tensions, this);
-        srv2 = n->advertiseService("emergency_stop", &pid_controller::emergency_stop, this);
-        srv3 = n->advertiseService("set_specific_motor_tension", &pid_controller::set_specific_motor_tension, this);
-        sub = n->subscribe("/ref_tensions", 1, &pid_controller::ref_tensions_callback , this);
-        sub2 = n->subscribe("/loadcell_measurements", 1, &pid_controller::loadcell_measurements_callback , this);
-        sub3 = n->subscribe("/joy", 1, &pid_controller::joy_callback, this);
+        srv1 = n->advertiseService("/set_motor_tensions", &tension_rate_controller ::set_motor_tensions, this);
+        srv2 = n->advertiseService("/emergency_stop", &tension_rate_controller ::emergency_stop, this);
+        srv3 = n->advertiseService("/set_specific_motor_tension", &tension_rate_controller ::set_specific_motor_tension, this);
+        sub = n->subscribe("/ref_tensions", 1, &tension_rate_controller ::ref_tensions_callback , this);
+        sub2 = n->subscribe("/loadcell_measurements", 1, &tension_rate_controller ::loadcell_measurements_callback , this);
+        sub3 = n->subscribe("/joy", 1, &tension_rate_controller ::joy_callback, this);
 
     }
+
 
     bool set_motor_tensions(smartmotors_linux::setAllMotorTensions::Request& request,
                             smartmotors_linux::setAllMotorTensions::Response& response) 
@@ -124,7 +142,7 @@ class pid_controller {
         sm_msg.motorcommand = str_command;
         pub_sm.publish(sm_msg);
 
-        ref[request.motor_number] = request.tension;
+        ref[request.motor_number-1] = request.tension;
 
 
         ROS_INFO("Tensions set at: %ld for motors 1 to %ld", request.tension, request.motor_number);
@@ -215,21 +233,18 @@ class pid_controller {
 
     } 
 
-    void loadcell_measurements_callback(const std_msgs::Float64MultiArray& msg) {
+    void run_PID() 
+    
+    {
 
-        Eigen::VectorXd measurements = Eigen::VectorXd::Map(msg.data.data(), msg.data.size());
-        error = ref - measurements.head(sensor_count);
-
-        // for (int i = 0; i < 4; i++) {
-
-        //     control_input[i] = - 1000 * pow(abs(error[i]), 0.6) * tanh(error[i]);
-
-        // }
-        control_input.head(sensor_count) = - (Kp * error.head(sensor_count) + Kd * (error.head(sensor_count) - previous_error.head(sensor_count))/dt);  // This is for P PID controller! 
-        // control_input[4] = - (Kp_rail * error[4] - Kd_rail * (error[4] - previous_error[4])/dt);
-        // control_input[5] = - (Kp_gripper * error[5] + Kd_gripper * (error[5] - previous_error[5])/dt);
+        check_windup();
+        error = ref - tension_rate_filtered.head(sensor_count);
+        control_input.head(sensor_count) = - (Ki*integral_error + Kp * error.head(sensor_count) + Kd * (error.head(sensor_count) - previous_error.head(sensor_count))/dt);  // This is for P PID controller! 
         apply_upper_limit(control_input);
+        check_negative_tension();
 
+        // std::cout << control_input << "\n\n";
+        
         // std::cout << "de: " << (error - previous_error)/dt << std::endl;
         // std::cout << "Ref: " << ref << std::endl;
         // std::cout << "Control input: " << control_input.array() << std::endl;
@@ -242,7 +257,97 @@ class pid_controller {
         previous_error = error;
 
 
+    } 
+
+    void pub_filtered_tension_rate() 
+    
+    {
+
+        std::vector<double> filteredTensionRate(tension_rate_filtered.data(), tension_rate_filtered.data() + tension_rate_filtered.size());
+        filteredTensionRateMsg.data.clear();
+        filteredTensionRateMsg.data.insert(filteredTensionRateMsg.data.end(), filteredTensionRate.begin(), filteredTensionRate.end());
+        pubFilteredTensionRates.publish(filteredTensionRateMsg);
+
+    } 
+
+    void pub_filtered_loadcell() 
+    
+    {
+
+        std::vector<double> filteredResults(measurements_filtered.data(), measurements_filtered.data() + measurements_filtered.size());
+        filteredResultsMsg.data.clear();
+        filteredResultsMsg.data.insert(filteredResultsMsg.data.end(), filteredResults.begin(), filteredResults.end());
+        pubFilteredResults.publish(filteredResultsMsg);
+
+    } 
+
+    void loadcell_measurements_callback(const std_msgs::Float64MultiArray& msg) {
+
+        for (unsigned int i = 0; i < sensor_count; i++) 
+        
+        {   
+
+            filter->setData(msg.data.data()[i], i);
+
+        }  
+
+        measurements_filtered_previous = measurements_filtered;
+        filter->computeMedian();
+        measurements_filtered = filter->getMedian();
+        pub_filtered_loadcell();
+        tension_rate_filtered = (measurements_filtered - measurements_filtered_previous) / dt;
+        pub_filtered_tension_rate();
+
+        run_PID();
+
     }
+
+    void check_negative_tension() 
+    
+    {
+
+        for (int i = 0; i < sensor_count; ++i) 
+        
+        {
+
+            if (measurements_filtered[i] < 0 && control_input[i] > 0) 
+            
+            {
+
+                control_input[i] = 0; 
+
+            }
+
+        }
+
+    } 
+
+    void check_windup() 
+    
+    
+    {
+
+        for (int i = 0; i < sensor_count; ++i) 
+        
+        {
+
+            if ((error[i] > 0 && control_input[i] > -max_vel) || (control_input[i] < max_vel && error[i] < 0)) 
+            
+            {
+
+            } 
+
+            else 
+            
+            {
+                
+                integral_error[i] += (error[i] - previous_error[i])*dt;
+
+            }
+
+        } 
+
+    } 
 
     void apply_upper_limit(Eigen::VectorXd& con){
 
@@ -321,14 +426,27 @@ class pid_controller {
 
     } 
 
+
 };
 
 
 int main(int argc, char** argv){
 
-    ros::init(argc, argv, "sm_pid_tension");
-    ros::NodeHandle n;
-    pid_controller controller = pid_controller(&n, 140, 0.0, -0.0); 
+    ros::init(argc, argv, "tension_rate_pid");
+    ros::NodeHandle n("~");
+    // std::string sensor_count_param; 
+    int sensor_count_param = 6;
+    if (n.getParam("sensor_count_param", sensor_count_param)) 
+    {
+        // ROS_INFO("Got param: %s", sensor_count_param.c_str());
+        ROS_INFO("Got param: %i", sensor_count_param);
+    }
+    else 
+    {
+        ROS_INFO("Default param: %i", sensor_count_param);
+    }
+    MedianFilter filter_(21, sensor_count_param);
+    tension_rate_controller controller = tension_rate_controller(&n, 400, 5.0, 5.0, sensor_count_param, &filter_); 
     ros::spin();
 
 } 

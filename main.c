@@ -11,10 +11,10 @@ int main(void)
 	int SMXE = 0;
 	int Firmware = 0;
     	int x;
-	int Baud = 9600;
-	int value;
-//	char temp[16]; 	// needed for some tests
-//	long value=0; 	// needed for some tests
+	int Baud = 115200;
+	// int value;
+	char temp[16]; 	// needed for some tests
+	long value=0; 	// needed for some tests
     	puts("Start.."); 
     	Port = OpenPort();
    	SMX = open("testSMX.smx", O_RDWR | O_NOCTTY);
@@ -29,6 +29,7 @@ int main(void)
         	puts("error opening a file");
 		
 	}
+//	AddressRS232(Port, Baud);
 // Tests for different functions in Class5LinuxApp.c
 // echo = 1, ECHO_ON
 //-----------------------------------------------------
@@ -36,25 +37,26 @@ int main(void)
 //	x = DownloadSmxeFile(Port,SMXE,Baud,1);
 //      x = UploadSMX(Port,Baud, 1);
 //	x = UploadSMS(Port,Baud,1);
-//	x = DownloadFirmware(Port,Firmware, Baud,1);
+//	x = DownloadFirmware(Port,Firmware, 38400,1);
 //	x = WriteCommand(Port, Baud, "RPA ", 4);
-	x = WriteCommand(Port, Baud, "MT ", 1, 0x81);
-	x = WriteCommand(Port, Baud, "T=2500 ", 1, 0x81);
-	x = WriteCommand(Port, Baud, "G ", 1, 0x81);
-	x = WriteCommand(Port, Baud, "X ", 0, 0x81);
+	x = AddressRS232(Port, Baud);
+	x = WriteCommand(Port, Baud, "MV ", 1, 0x85);
+	x = WriteCommand(Port, Baud, "VT=10000 ", 1, 0x85);
+	x = WriteCommand(Port, Baud, "G ", 1, 0x85);
+	// x = WriteCommand(Port, Baud, "X ", 0, 0x85);
 //	x = GetFirmwareVersion(Port, Baud, temp ,1);
 //	x = GetSerial(Port, Baud, temp,1);		
 //	x = GetProdDate(Port, Baud, temp, 1);
-	
-	x = GetValue(Port, Baud, "RPA ", value, 1, 0x83);
-	printf("%s%d\n", "value: ", x);
-	x = GetValue(Port, Baud, "RPA ", value, 1, 0x83);
-	printf("%s%d\n", "value: ", x);
-	x = GetValue(Port, Baud, "RPA ", value, 1, 0x83);
-	printf("%s%d\n", "value: ", x);
 //	x = EstLinkNew(Port, Baud);
 //	x = DetectRS232(Port, Baud);
-//	x = AddressRS232(Port, Baud);
+	//x = GetProdDate(Port, Baud, temp, 1);
+	value = GetValue(Port, Baud, "RVT ", value, 1);
+	printf("%s%ld\n", "value: ", value);
+	value = GetValue(Port, Baud, "RVT ", value, 1);
+	printf("%s%ld\n", "value: ", value);
+	value = GetValue(Port, Baud, "RVT ", value, 1);
+	printf("%s%ld\n", "value: ", value);
+
 //	x = DetectRS485(Port, Baud);
 	if ( x >= 0)
    	{

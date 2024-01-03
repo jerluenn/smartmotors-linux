@@ -36,6 +36,7 @@ void MedianFilter::setData(double data, unsigned int index)
 
 {
 
+
     window_data[index].erase(window_data[index].begin());
     window_data[index].push_back(data);
 

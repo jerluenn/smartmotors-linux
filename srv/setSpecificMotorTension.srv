@@ -1,0 +1,4 @@
+int64 tension
+int64 motor_number
+---
+bool result

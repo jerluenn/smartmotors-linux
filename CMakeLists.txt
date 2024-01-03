@@ -38,6 +38,7 @@ add_service_files(
   FILES
   emergencyStop.srv
   setAllMotorTensions.srv
+  setSpecificMotorTension.srv
 )
 
 generate_messages(
@@ -61,14 +62,21 @@ include_directories(
 
 add_library(smartmotors_linux src/Class5LinuxApp.c)
 add_library(MedianFilter src/medianfilter.cpp)
+add_library(KalmanFilter src/kalmanfilter.cpp)
 
 add_executable(smartmotors src/smartmotor.cpp src/wrapper.cpp)
 add_executable(pid_tension src/pid_tension.cpp)
+add_executable(pid_tension_test src/pid_tension_test.cpp)
 add_executable(testMedianFilter src/testMedianFilter.cpp)
+add_executable(testKalmanFilter src/testKalmanFilter.cpp)
+add_executable(tension_rate_pid src/tension_rate_pid.cpp)
 
+target_link_libraries(testKalmanFilter ${catkin_LIBRARIES} KalmanFilter)
 target_link_libraries(testMedianFilter ${catkin_LIBRARIES} MedianFilter)
 target_link_libraries(smartmotors ${catkin_LIBRARIES} smartmotors_linux)
 target_link_libraries(pid_tension ${catkin_LIBRARIES} smartmotors_linux)
+target_link_libraries(pid_tension_test ${catkin_LIBRARIES} smartmotors_linux)
+target_link_libraries(tension_rate_pid ${catkin_LIBRARIES} smartmotors_linux MedianFilter KalmanFilter)
 
 install(TARGETS smartmotors_linux
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

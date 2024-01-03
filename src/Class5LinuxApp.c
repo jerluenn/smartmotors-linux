@@ -19,7 +19,7 @@ int GetFileName(int Port, char* Filename, char echo);
 int GetFirmwareVersion(int Port, int Baud, char* temp, char echo);
 int GetSerial(int Port, int Baud, char* temp, char echo);
 int GetProdDate(int Port, int Baud, char* temp, char echo);
-int GetValue(int Port, int Baud, char* Command, long value, char echo, char* MotorNo);
+int GetValue(int Port, int Baud, char* Command, long value, char echo);
 int testfunc(int Port);
 int testBaud(int Port, int Baud);
 int EstLinkNew(int Port, int Baud);
@@ -167,7 +167,7 @@ int testfunc(int Port)
 				if(cfsetospeed(&options,B9600)==-1)
 				{
 					return -1;
-				}
+					}
 				break;
 			case 19200:
 				if(cfsetispeed(&options,B19200)== -1)
@@ -1365,11 +1365,13 @@ int GetProdDate(int Port, int Baud, char* temp, char echo)
 // // Returns value in the value parameter
 // // -----------------------------------------------------
 
-int GetValue(int Port, int Baud, char* Command, long value, char echo, char* MotorNo)
+int GetValue(int Port, int Baud, char* Command, long value, char echo)
 {
 	char buf;
 	int i;
 	struct termios options;
+
+	char MotorNo = 0x85;
 
 	write(Port, (unsigned char*)&MotorNo, 1);
 
@@ -1408,14 +1410,18 @@ int GetValue(int Port, int Baud, char* Command, long value, char echo, char* Mot
 		}
 	}
 	int count = 0;
-	char hold [20];
+	char hold [100];
 
 	while(read(Port,(unsigned char*)&buf,1) > 0)
 	{
+
 		hold[count] = buf;
 		count ++;
+
 	}
 	sscanf(hold, "%ld", &value);
+	//printf("%.*s\n", (int)sizeof(hold), hold);
+	// printf("%c", hold);
 	printf("%s%ld\n", "value: " , value);
 
 	return value;
@@ -1476,13 +1482,15 @@ int testBaud(int Port, int Baud)
 
 int EstLinkNew(int Port, int Baud)
 {
+
 	char buf, gotwake,echo;
 	char a = 0x80;
 	int i;
 	int MaxMotors;
-//	int MotorsFound = 0;
+	int MotorsFound = 0;
 	int SerialBitRates[5] = {9600,19200,38400,57600,115200};
 	struct termios options;
+	
 
 	if( SetBaudrate(Port,Baud) != 0)
     	{
@@ -1936,6 +1944,8 @@ int EstLinkNew(int Port, int Baud)
 // // ----------------------------------------------------
 int DetectRS232(int Port, int Baud)
 {
+
+	
 	int retval= -1;
 	int MaxMotors=10;
 	int i;
@@ -2107,6 +2117,7 @@ int AddressRS232(int Port, int Baud)
 	int MaxMotors = 10;
 	int val = -1;
 	char a = 0x80;
+	char message[8];
 	val = DetectRS232(Port,Baud);
 	if(val <0)
 	{

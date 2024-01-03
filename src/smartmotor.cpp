@@ -12,6 +12,19 @@
 
 SmartMotors s;
 
+void read_callback(const smartmotors_linux::command::ConstPtr& msg) 
+
+{
+
+  char* line; 
+  int num;
+  line = (char*)msg->motorcommand.c_str();
+  num = msg->motorno;
+  std::cout << num << line << std::endl;
+  s.read(line, num);
+
+}
+
 void callback(const smartmotors_linux::command::ConstPtr& msg){
 
   char* line;
@@ -62,6 +75,7 @@ int main(int argc, char **argv){
 
   ros::Subscriber sub = n.subscribe("smartmotor_command", 1, callback, ros::TransportHints().tcpNoDelay(true));
   ros::Subscriber sub2 = n.subscribe("smartmotor_array_command", 1, array_callback, ros::TransportHints().tcpNoDelay(true));
+  ros::Subscriber sub3 = n.subscribe("smartmotor_read", 1, read_callback, ros::TransportHints().tcpNoDelay(true));
 
   ros::MultiThreadedSpinner spinner(1);
   spinner.spin();
