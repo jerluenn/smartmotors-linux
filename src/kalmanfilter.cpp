@@ -1,10 +1,13 @@
 #include "kalmanfilter.hpp"
 
-KalmanFilter::KalmanFilter(double a_, double r1_, double dt_): a(a_), r1(r1_), dt(dt_) 
+KalmanFilter::KalmanFilter()
 
 {
 
     //Initialisation
+    dt = 0.01; 
+    a = 20; 
+    r1 = 30; 
     x_minus.resize(2, 1);
     x_plus.resize(2, 1);
     Q.resize(2, 2);
@@ -35,7 +38,30 @@ KalmanFilter::KalmanFilter(double a_, double r1_, double dt_): a(a_), r1(r1_), d
 }
 
 KalmanFilter::~KalmanFilter(){} 
-KalmanFilter::KalmanFilter(){}
+
+void KalmanFilter::setParameters(double a_, double r1_, double dt_){
+
+    a = a_; 
+    r1 = r1_; 
+    dt = dt_;
+
+}
+
+Eigen::MatrixXd KalmanFilter::testVector() 
+
+{
+
+    return Q;
+
+}
+
+double KalmanFilter::testA() 
+
+{
+
+    return a;
+
+}
 
 void KalmanFilter::computeEstimate(Eigen::VectorXd measurements) 
 

@@ -14,6 +14,7 @@
 #include <chrono>
 #include <cmath>
 #include <Eigen/Dense>
+#include <kalmanfilter.hpp>
 
 class pid_controller_ {
 
@@ -25,9 +26,12 @@ class pid_controller_ {
     ros::Publisher pub_sm_array; 
     ros::Publisher pub_sm;
     ros::Publisher str_pub;
+    ros::Publisher pubFilteredResults;
+    ros::Publisher pubFilteredTensionRates;
     ros::Subscriber sub;
     ros::Subscriber sub2;
     ros::Subscriber sub3;
+    ros::Subscriber sub4; 
     ros::ServiceServer srv1;
     ros::ServiceServer srv2;
     ros::ServiceServer srv3;
@@ -38,8 +42,16 @@ class pid_controller_ {
     Eigen::VectorXd error;
     Eigen::VectorXd control_input; 
     Eigen::VectorXd initial_input;
+    Eigen::VectorXd measurements_filtered; 
+    Eigen::VectorXd measurements_filtered_previous; 
+    Eigen::VectorXd tension_rate_filtered; 
+    Eigen::MatrixXd filtered_states; 
+    Eigen::VectorXd measurement_load_cell;
     smartmotors_linux::arraycommand control_msg;
     smartmotors_linux::command sm_msg;
+    std::vector<KalmanFilter> KalmanFilterArray;
+    std_msgs::Float64MultiArray filteredResultsMsg;
+    std_msgs::Float64MultiArray filteredTensionRateMsg;
     // std::vector<float> control_vector;   
     std::string str_command; 
 
@@ -49,6 +61,21 @@ class pid_controller_ {
 
         sensor_count = sens_count;
         initial_input.resize(sensor_count);
+        for (int i = 0; i < sensor_count; i++) 
+        {
+
+            KalmanFilterArray.emplace_back();
+            KalmanFilterArray[i].setParameters(30, 20, 0.01);
+            
+        }
+        filtered_states.resize(sensor_count, 2);
+        measurement_load_cell.resize(1);
+        tension_rate_filtered.resize(sensor_count);
+        tension_rate_filtered.setZero();
+        measurements_filtered.resize(sensor_count);
+        measurements_filtered.setZero();
+        measurements_filtered_previous.resize(sensor_count);
+        measurements_filtered_previous.setZero();
         initial_input.setOnes();
         initial_input *= 50000; 
         previous_error.resize(sensor_count); 
@@ -70,6 +97,8 @@ class pid_controller_ {
         Kd = K_d;
         pub_sm_array = n->advertise<smartmotors_linux::arraycommand>("/smartmotor_array_command", 10); // for arrays.
         pub_sm = n->advertise<smartmotors_linux::command>("/smartmotor_command", 10);
+        pubFilteredResults = n->advertise<std_msgs::Float64MultiArray>("/tension_kalmanfiltered", 10);
+        pubFilteredTensionRates = n->advertise<std_msgs::Float64MultiArray>("/tension_rate_kalmanfiltered", 10);
         ros::Rate rate(1);
         rate.sleep();
         initialise();
@@ -114,6 +143,8 @@ class pid_controller_ {
                         smartmotors_linux::setSpecificMotorTension::Response& response) 
     {
 
+        ROS_INFO("S1");
+
         str_command = "ADT=1000 "; 
         sm_msg.motorcommand = str_command;
         pub_sm.publish(sm_msg);
@@ -122,8 +153,11 @@ class pid_controller_ {
         sm_msg.motorcommand = str_command;
         pub_sm.publish(sm_msg);
 
+        ROS_INFO("S2");
+
         ref[request.motor_number-1] = request.tension;
 
+        
 
         ROS_INFO("Tensions set at: %ld for motors 1 to %ld", request.tension, request.motor_number);
 
@@ -215,13 +249,67 @@ class pid_controller_ {
 
     void loadcell_measurements_callback(const std_msgs::Float64MultiArray& msg) {
 
-        Eigen::VectorXd measurements = Eigen::VectorXd::Map(msg.data.data(), msg.data.size());
-        error = ref - measurements.head(sensor_count);
+        ROS_INFO("1");
+
+        for (unsigned int i = 0; i < sensor_count; i++) 
+        
+        {   
+
+            measurement_load_cell(0) = msg.data.data()[i];
+            KalmanFilterArray[i].computeEstimate(measurement_load_cell);
+            filtered_states.row(i) = KalmanFilterArray[i].getEstimate();
+
+        }  
+
+        ROS_INFO("2");
+
+        measurements_filtered = filtered_states.col(0);
+        tension_rate_filtered = filtered_states.col(1);
+
+        ROS_INFO("3");
+
+
+        pub_filtered_loadcell();
+
+        ROS_INFO("4");
+        pub_filtered_tension_rate();
+
+        ROS_INFO("5");
+        run_PID();
+
+        ROS_INFO("6");
+
+    }
+
+    void check_negative_tension() 
+    
+    {
+
+        for (int i = 0; i < sensor_count; ++i) 
+        
+        {
+
+            if (measurements_filtered[i] < 0 && control_input[i] > 0) 
+            
+            {
+
+                control_input[i] = 0; 
+
+            }
+
+        }
+
+    } 
+
+    void run_PID() 
+    
+    {
+
+        error = ref - measurements_filtered.head(sensor_count);
         control_input.head(sensor_count) = - (Kp * error.head(sensor_count) + Kd * (error.head(sensor_count) - previous_error.head(sensor_count))/dt);  // This is for P PID controller! 
         apply_upper_limit(control_input);
-        // std::cout << "de: " << (error - previous_error)/dt << std::endl;
-        // std::cout << "Ref: " << ref << std::endl;
-        // std::cout << "Control input: " << control_input.array() << std::endl;
+        check_negative_tension();
+
         std::vector<int> control_vector(control_input.data(), control_input.data() + control_input.size());
         control_msg.motorarrayvalues.clear();
         control_msg.motorarrayvalues.insert(control_msg.motorarrayvalues.end(), control_vector.begin(), control_vector.end());
@@ -230,7 +318,32 @@ class pid_controller_ {
 
         previous_error = error;
 
-    }
+
+    } 
+
+
+
+    void pub_filtered_tension_rate() 
+    
+    {
+
+        std::vector<double> filteredTensionRate(tension_rate_filtered.data(), tension_rate_filtered.data() + tension_rate_filtered.size());
+        filteredTensionRateMsg.data.clear();
+        filteredTensionRateMsg.data.insert(filteredTensionRateMsg.data.end(), filteredTensionRate.begin(), filteredTensionRate.end());
+        pubFilteredTensionRates.publish(filteredTensionRateMsg);
+
+    } 
+
+    void pub_filtered_loadcell() 
+    
+    {
+
+        std::vector<double> filteredResults(measurements_filtered.data(), measurements_filtered.data() + measurements_filtered.size());
+        filteredResultsMsg.data.clear();
+        filteredResultsMsg.data.insert(filteredResultsMsg.data.end(), filteredResults.begin(), filteredResults.end());
+        pubFilteredResults.publish(filteredResultsMsg);
+
+    } 
 
     void apply_upper_limit(Eigen::VectorXd& con){
 

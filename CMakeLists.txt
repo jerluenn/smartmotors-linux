@@ -3,7 +3,7 @@ project(smartmotors_linux)
 
 
 set(CMAKE_BUILD_TYPE Debug)
-add_compile_options(-std=c++11)
+add_compile_options(-std=c++14)
 find_package(catkin REQUIRED
 	COMPONENTS
 	roscpp
@@ -75,7 +75,7 @@ target_link_libraries(testKalmanFilter ${catkin_LIBRARIES} KalmanFilter)
 target_link_libraries(testMedianFilter ${catkin_LIBRARIES} MedianFilter)
 target_link_libraries(smartmotors ${catkin_LIBRARIES} smartmotors_linux)
 target_link_libraries(pid_tension ${catkin_LIBRARIES} smartmotors_linux)
-target_link_libraries(pid_tension_test ${catkin_LIBRARIES} smartmotors_linux)
+target_link_libraries(pid_tension_test ${catkin_LIBRARIES} smartmotors_linux KalmanFilter)
 target_link_libraries(tension_rate_pid ${catkin_LIBRARIES} smartmotors_linux MedianFilter KalmanFilter)
 
 install(TARGETS smartmotors_linux

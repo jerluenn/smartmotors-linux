@@ -62,7 +62,7 @@ int main (int argc, char** argv)
 
     ros::init(argc, argv, "tension_kalman_filter");
 
-    KalmanFilter m(20, 30, 0.01);
+    KalmanFilter m;
     ros::NodeHandle n; 
     TestKalmanFilter(&n, &m);
 

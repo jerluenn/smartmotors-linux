@@ -16,9 +16,11 @@ class KalmanFilter
 
     public:
 
-        KalmanFilter(double a_, double r1_, double dt_);
         KalmanFilter();
         ~KalmanFilter();
+        void setParameters(double a_, double r1_, double dt_);
+        Eigen::MatrixXd testVector();
+        double testA();
         void computeEstimate(Eigen::VectorXd measurements);
         Eigen::VectorXd getEstimate();
 

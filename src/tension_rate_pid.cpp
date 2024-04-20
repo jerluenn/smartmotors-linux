@@ -14,7 +14,9 @@
 #include <chrono>
 #include <cmath>
 #include <Eigen/Dense>
-#include <medianfilter.hpp>
+#include <memory>
+#include <iostream>
+#include <kalmanfilter.hpp>
 
 
 class tension_rate_controller 
@@ -38,6 +40,7 @@ class tension_rate_controller
     ros::ServiceServer srv1;
     ros::ServiceServer srv2;
     ros::ServiceServer srv3;
+    Eigen::VectorXd measurement_load_cell;
     Eigen::VectorXd integral_error;
     Eigen::VectorXd previous_error;
     Eigen::VectorXd ref; 
@@ -48,19 +51,29 @@ class tension_rate_controller
     Eigen::VectorXd measurements_filtered; 
     Eigen::VectorXd measurements_filtered_previous; 
     Eigen::VectorXd tension_rate_filtered; 
+    Eigen::MatrixXd filtered_states; 
     smartmotors_linux::arraycommand control_msg;
     smartmotors_linux::command sm_msg;
-    MedianFilter* filter;
+    std::vector<KalmanFilter> KalmanFilterArray;
     std_msgs::Float64MultiArray filteredResultsMsg;
     std_msgs::Float64MultiArray filteredTensionRateMsg;
     // std::vector<float> control_vector;   
     std::string str_command; 
 
     public: 
-    tension_rate_controller (ros::NodeHandle *n, double K_p, double K_i, double K_d, int sens_count, MedianFilter* filter_) {
+    tension_rate_controller (ros::NodeHandle *n, double K_p, double K_i, double K_d, int sens_count) {
 
         sensor_count = sens_count;
-        filter = filter_;
+        
+        for (int i = 0; i < sensor_count; i++) 
+        {
+
+            KalmanFilterArray.emplace_back();
+            KalmanFilterArray[i].setParameters(30, 20, 0.01);
+            
+        }
+        filtered_states.resize(sensor_count, 2);
+        measurement_load_cell.resize(1);
         tension_rate_filtered.resize(sensor_count);
         tension_rate_filtered.setZero();
         measurements_filtered.resize(sensor_count);
@@ -86,8 +99,8 @@ class tension_rate_controller
         Ki = K_i; 
         Kd = K_d;
         pub_sm_array = n->advertise<smartmotors_linux::arraycommand>("/smartmotor_array_command", 10); // for arrays.
-        pubFilteredResults = n->advertise<std_msgs::Float64MultiArray>("/loadcell_filtered", 10);
-        pubFilteredTensionRates = n->advertise<std_msgs::Float64MultiArray>("/tension_rate_filtered", 10);
+        pubFilteredResults = n->advertise<std_msgs::Float64MultiArray>("/tension_kalmanfiltered", 10);
+        pubFilteredTensionRates = n->advertise<std_msgs::Float64MultiArray>("/tension_rate_kalmanfiltered", 10);
         pub_sm = n->advertise<smartmotors_linux::command>("/smartmotor_command", 10);
         ros::Rate rate(1);
         rate.sleep();
@@ -243,11 +256,6 @@ class tension_rate_controller
         apply_upper_limit(control_input);
         check_negative_tension();
 
-        // std::cout << control_input << "\n\n";
-        
-        // std::cout << "de: " << (error - previous_error)/dt << std::endl;
-        // std::cout << "Ref: " << ref << std::endl;
-        // std::cout << "Control input: " << control_input.array() << std::endl;
         std::vector<int> control_vector(control_input.data(), control_input.data() + control_input.size());
         control_msg.motorarrayvalues.clear();
         control_msg.motorarrayvalues.insert(control_msg.motorarrayvalues.end(), control_vector.begin(), control_vector.end());
@@ -283,21 +291,23 @@ class tension_rate_controller
 
     void loadcell_measurements_callback(const std_msgs::Float64MultiArray& msg) {
 
+
         for (unsigned int i = 0; i < sensor_count; i++) 
         
         {   
 
-            filter->setData(msg.data.data()[i], i);
+            measurement_load_cell(0) = msg.data.data()[i];
+            KalmanFilterArray[i].computeEstimate(measurement_load_cell);
+            filtered_states.row(i) = KalmanFilterArray[i].getEstimate();
 
         }  
 
-        measurements_filtered_previous = measurements_filtered;
-        filter->computeMedian();
-        measurements_filtered = filter->getMedian();
-        pub_filtered_loadcell();
-        tension_rate_filtered = (measurements_filtered - measurements_filtered_previous) / dt;
-        pub_filtered_tension_rate();
+        measurements_filtered = filtered_states.col(0);
+        tension_rate_filtered = filtered_states.col(1);
 
+
+        pub_filtered_loadcell();
+        pub_filtered_tension_rate();
         run_PID();
 
     }
@@ -445,8 +455,8 @@ int main(int argc, char** argv){
     {
         ROS_INFO("Default param: %i", sensor_count_param);
     }
-    MedianFilter filter_(21, sensor_count_param);
-    tension_rate_controller controller = tension_rate_controller(&n, 400, 5.0, 5.0, sensor_count_param, &filter_); 
+    
+    tension_rate_controller controller = tension_rate_controller(&n, 800, 50.0, 15.0, sensor_count_param); 
     ros::spin();
 
-} 
+}
